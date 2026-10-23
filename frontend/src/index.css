@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Cormorant Garamond", "Iowan Old Style", "Times New Roman", serif;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Surfaces */
+  --color-ink-950: #0b0a09;
+  --color-ink-900: #12110f;
+  --color-ink-850: #171512;
+  --color-ink-800: #1d1b17;
+  --color-ink-700: #2a2722;
+  --color-line: #36322b;
+
+  /* Text: all ≥ 7:1 on ink-950 except stone-500 (≥ 4.6:1, small print only) */
+  --color-bone: #f3eee6;
+  --color-stone-300: #cfc7ba;
+  --color-stone-400: #b3ab9f;
+  --color-stone-500: #8f877b;
+
+  /* Accent */
+  --color-gold: #c9a46a;
+  --color-gold-soft: #e2c896;
+  --color-gold-deep: #a8834b;
+
+  /* Unit status (always paired with a text label). Validated with the dataviz palette checker on ink-900. */
+  --color-available: #4fa57f;
+  --color-reserved: #bd8527;
+  --color-sold: #7b86d1;
+
+  --ease-luxe: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    background: var(--color-ink-950);
+    color: var(--color-bone);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-ink-950);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold-soft);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+  }
+  .container-luxe {
+    width: 100%;
+    max-width: 88rem;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 4vw, 3.5rem);
+  }
+  .hairline {
+    border-color: var(--color-line);
+  }
+  .field {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--color-line);
+    padding: 0.85rem 0 0.6rem;
+    color: var(--color-bone);
+    font-size: 1rem;
+    transition: border-color 0.3s var(--ease-luxe);
+  }
+  .field::placeholder {
+    color: var(--color-stone-500);
+  }
+  .field:focus {
+    outline: none;
+    border-bottom-color: var(--color-gold);
+  }
+  .field:focus-visible {
+    outline: none;
+    box-shadow: 0 1px 0 0 var(--color-gold);
+  }
+  .prose-luxe p {
+    margin-block: 1.1em;
+    color: var(--color-stone-300);
+    line-height: 1.8;
+  }
+  .prose-luxe h2,
+  .prose-luxe h3 {
+    margin-top: 2em;
+    font-size: 2rem;
+    color: var(--color-bone);
+  }
+  .prose-luxe ul {
+    list-style: none;
+    padding: 0;
+    color: var(--color-stone-300);
+  }
+  .prose-luxe li {
+    padding: 0.4em 0 0.4em 1.5em;
+    position: relative;
+  }
+  .prose-luxe li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1.05em;
+    width: 0.75em;
+    height: 1px;
+    background: var(--color-gold);
+  }
+  .prose-luxe blockquote {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.75rem;
+    border-left: 1px solid var(--color-gold);
+    padding-left: 1.25rem;
+    margin: 2rem 0;
+  }
+  .prose-luxe a {
+    color: var(--color-gold-soft);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes cue {
+  0% {
+    transform: scaleY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
