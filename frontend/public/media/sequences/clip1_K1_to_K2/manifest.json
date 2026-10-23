@@ -1,0 +1,8 @@
+{
+  "frameCount": 120,
+  "fps": 12,
+  "pattern": "frame_{index}.webp",
+  "pad": 4,
+  "desktop": { "dir": "desktop", "width": 1280, "height": 720, "bytes": 9404178, "poster": "poster-desktop.webp" },
+  "mobile": { "dir": "mobile", "width": 600, "height": 750, "bytes": 5477218, "poster": "poster-mobile.webp" }
+}

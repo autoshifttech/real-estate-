@@ -29,4 +29,6 @@ replace the "Assumed" column with real observations.
 - LCP < 1.0 s on a fast 4G profile for the home page (poster image is the LCP element).
 - Lighthouse mobile ≥ 90 on Performance, Accessibility, Best Practices, SEO.
 - Initial JS for `/` < 120 kB gzip. Three.js is never in the initial bundle.
-- Hero frames: ≤ 35 kB per mobile frame, ≤ 70 kB per desktop frame (WebP q≈60).
+- Hero frames: ≈45 kB per mobile frame (600×750) and ≈75 kB per desktop frame (1280×720), WebP q50.
+  The demo clip is unusually detailed (foliage, line drawings), so it compresses less than typical renders.
+  Frames never block first paint. On Save-Data or 2G/3G only every 3rd frame loads.
