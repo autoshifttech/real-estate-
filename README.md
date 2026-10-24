@@ -65,9 +65,17 @@ Forms open WhatsApp with the enquiry pre-filled. To receive them by email instea
 
 Illustration kinds: `plan`, `ghats`, `farm` (`trees: "mango"` for orchards), `hills` (`tea: true` for tea estates), `river`, `coast`, `plains`, `highway`. Change `seed` for a different variation.
 
-## About the illustrations
+## About the images
 
-There are no stock photos. Every landscape — the Western Ghats with the Courtallam falls, coconut groves, Kodaikanal pines, Ooty tea rows, Punalur riverbanks, Thoothukudi salt pans, Tirunelveli palmyra and wind turbines, isometric site plans — is drawn in SVG by `assets/js/art.js` from a seed, in two palettes (dawn and dusk). They load instantly and stay sharp at any size. Add real photos per listing with the `image` field whenever you have them.
+The hero, property cards, regions and banners use **golden-hour aerial renders** in `assets/img/scenes/` (plotted layouts among coconut groves, Ghats farmland, coconut and mango groves, Kerala river, Thoothukudi coast, palmyra plains, highway, Kodaikanal and Ooty hills). They are generated, not photographs, by `tools/scenes/render.html`; regenerate with:
+
+```sh
+node tools/scenes/render.js            # needs Playwright (Chromium) and ImageMagick
+```
+
+That also writes `assets/js/scenes.js`, the gold plot outline drawn on top of each image.
+
+**Using your own drone photos:** add `image: "assets/img/properties/your-photo.jpg"` to a listing in `assets/js/data.js` and it replaces the render on the card and property page. To change a hero image, replace the matching file in `assets/img/scenes/` (keep a 16:10 photo with sky in the top third, where the headline sits).
 
 ## Project structure
 

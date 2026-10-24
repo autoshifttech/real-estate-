@@ -5,8 +5,9 @@
  * real properties before going live. Each listing supports:
  *   id          unique, used in the URL: property.html?id=<id>
  *   price       number in rupees (used for filtering and sorting)
- *   art         generated illustration { kind, seed, trees } — kinds: plan, ghats, farm,
- *               hills, river, coast, plains, highway
+ *   scene       rendered golden-hour image in assets/img/scenes (plots, plots-b, plots-close,
+ *               house, ghats, farm, farm-b, mango, river, coast, plains, highway, hills, tea)
+ *   art         fallback SVG illustration { kind, seed } used when there is no scene or image
  *   image       optional photo path (e.g. "assets/img/properties/ilanji.jpg"); replaces the art
  *   video       optional YouTube / Instagram link to the walkthrough video
  *   layout      optional plot chooser for layouts { rows, cols, plotSize, sold:[], booked:[] }
@@ -14,37 +15,37 @@
 window.TLP_DATA = {
   regions: [
     {
-      id: "tenkasi", name: "Tenkasi", ta: "தென்காசி", lat: 8.959, lng: 77.315,
+      id: "tenkasi", scene: "ghats", name: "Tenkasi", ta: "தென்காசி", lat: 8.959, lng: 77.315,
       art: { kind: "ghats", seed: 4 },
       blurb: "Our home ground. Plots and farmland at the foot of the Western Ghats — Courtallam, Ilanji, Sengottai and beyond."
     },
     {
-      id: "tirunelveli", name: "Tirunelveli", ta: "திருநெல்வேலி", lat: 8.713, lng: 77.757,
+      id: "tirunelveli", scene: "plains", name: "Tirunelveli", ta: "திருநெல்வேலி", lat: 8.713, lng: 77.757,
       art: { kind: "plains", seed: 8 },
       blurb: "Palmyra plains and growing city layouts around Palayamkottai and the NH 44 corridor."
     },
     {
-      id: "virudhunagar", name: "Virudhunagar", ta: "விருதுநகர்", lat: 9.585, lng: 77.958,
+      id: "virudhunagar", scene: "mango", name: "Virudhunagar", ta: "விருதுநகர்", lat: 9.585, lng: 77.958,
       art: { kind: "farm", seed: 12, trees: "mango" },
       blurb: "Mango orchards near Rajapalayam and well-priced plots in fast-growing towns."
     },
     {
-      id: "thoothukudi", name: "Thoothukudi", ta: "தூத்துக்குடி", lat: 8.764, lng: 78.135,
+      id: "thoothukudi", scene: "coast", name: "Thoothukudi", ta: "தூத்துக்குடி", lat: 8.764, lng: 78.135,
       art: { kind: "coast", seed: 6 },
       blurb: "Port-city plots and coastal land along the Tiruchendur road."
     },
     {
-      id: "kodaikanal", name: "Kodaikanal", ta: "கொடைக்கானல்", lat: 10.238, lng: 77.489,
+      id: "kodaikanal", scene: "hills", name: "Kodaikanal", ta: "கொடைக்கானல்", lat: 10.238, lng: 77.489,
       art: { kind: "hills", seed: 5 },
       blurb: "Hill land with valley views — for homes, homestays and quiet retreats."
     },
     {
-      id: "ooty", name: "Ooty", ta: "ஊட்டி", lat: 11.41, lng: 76.695,
+      id: "ooty", scene: "tea", name: "Ooty", ta: "ஊட்டி", lat: 11.41, lng: 76.695,
       art: { kind: "hills", seed: 9, tea: true },
       blurb: "Tea-country estates in the Nilgiris, cool all year round."
     },
     {
-      id: "kerala", name: "Kerala", ta: "கேரளா", lat: 9.017, lng: 76.926,
+      id: "kerala", scene: "river", name: "Kerala", ta: "கேரளா", lat: 9.017, lng: 76.926,
       art: { kind: "river", seed: 3 },
       blurb: "Riverside and plantation land just across the Ghats, through the Aryankavu pass."
     }
@@ -69,6 +70,7 @@ window.TLP_DATA = {
   properties: [
     {
       id: "courtallam-meadows",
+      scene: "plots",
       title: "Courtallam Meadows",
       region: "tenkasi",
       type: "plot",
@@ -100,6 +102,7 @@ window.TLP_DATA = {
     },
     {
       id: "ilanji-coconut-grove",
+      scene: "farm",
       title: "Ilanji Coconut Grove",
       region: "tenkasi",
       type: "farm",
@@ -130,6 +133,7 @@ window.TLP_DATA = {
     },
     {
       id: "sengottai-foothill-farm",
+      scene: "ghats",
       title: "Sengottai Foothill Farm",
       region: "tenkasi",
       type: "farm",
@@ -160,6 +164,7 @@ window.TLP_DATA = {
     },
     {
       id: "madurai-highway-frontage",
+      scene: "highway",
       title: "Madurai Highway Frontage",
       region: "tenkasi",
       type: "commercial",
@@ -189,6 +194,7 @@ window.TLP_DATA = {
     },
     {
       id: "melagaram-ready-house",
+      scene: "house",
       title: "Melagaram Ready House",
       region: "tenkasi",
       type: "house",
@@ -218,6 +224,7 @@ window.TLP_DATA = {
     },
     {
       id: "palayamkottai-garden-plots",
+      scene: "plots-b",
       title: "Palayamkottai Garden Plots",
       region: "tirunelveli",
       type: "plot",
@@ -248,6 +255,7 @@ window.TLP_DATA = {
     },
     {
       id: "gangaikondan-palmyra-land",
+      scene: "plains",
       title: "Gangaikondan Palmyra Land",
       region: "tirunelveli",
       type: "farm",
@@ -277,6 +285,7 @@ window.TLP_DATA = {
     },
     {
       id: "rajapalayam-mango-orchard",
+      scene: "mango",
       title: "Rajapalayam Mango Orchard",
       region: "virudhunagar",
       type: "farm",
@@ -306,6 +315,7 @@ window.TLP_DATA = {
     },
     {
       id: "virudhunagar-nagar-plots",
+      scene: "plots-close",
       title: "Virudhunagar Nagar Plots",
       region: "virudhunagar",
       type: "plot",
@@ -334,6 +344,7 @@ window.TLP_DATA = {
     },
     {
       id: "tiruchendur-road-plots",
+      scene: "coast",
       title: "Tiruchendur Road Plots",
       region: "thoothukudi",
       type: "plot",
@@ -364,6 +375,7 @@ window.TLP_DATA = {
     },
     {
       id: "poombarai-valley-estate",
+      scene: "hills",
       title: "Poombarai Valley Estate",
       region: "kodaikanal",
       type: "estate",
@@ -393,6 +405,7 @@ window.TLP_DATA = {
     },
     {
       id: "ketti-valley-tea-plot",
+      scene: "tea",
       title: "Ketti Valley Tea Land",
       region: "ooty",
       type: "estate",
@@ -422,6 +435,7 @@ window.TLP_DATA = {
     },
     {
       id: "punalur-riverside-land",
+      scene: "river",
       title: "Punalur Riverside Land",
       region: "kerala",
       type: "farm",

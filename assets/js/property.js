@@ -26,7 +26,7 @@
 
   /* hero */
   // site plans read best as a night blueprint behind white type
-  if (p.art.kind === "plan" && !p.image) {
+  if (p.art.kind === "plan" && !p.image && !p.scene) {
     hero.classList.add("t-dusk");
     var hdr = qs("#site-header"); if (hdr) hdr.classList.add("is-inverse");
   }

@@ -1,0 +1,587 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Scene renderer</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;width:100%;height:auto}</style></head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/*
+ * Golden-hour aerial scene renderer.
+ * Renders a "drone photo" style image for a scene name given in the URL hash
+ * (render.html#plots), exposes the gold boundary path for the overlay, and sets
+ * window.__done when finished. Driven by tools/scenes/render.js.
+ */
+"use strict";
+const W = 3200, H = 2000;                  // render size (downscaled to 1920×1200 on export)
+const OUT = 1600 / W;                       // gold paths are exported in a 1600×1000 viewBox
+const canvas = document.getElementById("c");
+canvas.width = W; canvas.height = H;
+const ctx = canvas.getContext("2d");
+
+/* ---------- noise ---------- */
+function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash(x, y, s) { let h = (x * 374761393 + y * 668265263 + s * 982451653) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi, s), b = hash(xi + 1, yi, s), c = hash(xi, yi + 1, s), d = hash(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, s, o) { o = o || 4; let f = 0, a = 0.5, fr = 1, n = 0; for (let i = 0; i < o; i++) { f += a * vnoise(x * fr, y * fr, s + i * 17); n += a; fr *= 2.03; a *= 0.5; } return f / n; }
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const rgb = (c, a) => a == null ? `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})` : `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+
+/* ---------- camera: elevated drone looking toward the low sun ---------- */
+const cam = { hy: H * 0.42, f: 3840, h: 120, cx: W / 2 };
+function proj(X, Z, Y) { Y = Y || 0; return [cam.cx + X * cam.f / Z, cam.hy + (cam.h - Y) * cam.f / Z]; }
+function unproj(sx, sy) { const Z = cam.h * cam.f / (sy - cam.hy); return [(sx - cam.cx) * Z / cam.f, Z]; }
+
+let SUN = { x: W * 0.34, y: cam.hy - 70, r: 70 };
+const HAZE_COOL = [222, 218, 204], HAZE_WARM = [252, 222, 166];
+function sunNear(sx) { const d = (sx - SUN.x) / (W * 0.38); return Math.exp(-d * d); }
+function hazeColor(sx) { return mix(HAZE_COOL, HAZE_WARM, sunNear(sx)); }
+function hazeAmt(Z, k) { return 0.88 * (1 - Math.exp(-Z / (k || 8200))); }
+// golden-hour grading for anything lit by the sun
+function warm(c, k) { k = k == null ? 1 : k; return [c[0] * (1 + 0.08 * k), c[1] * (1 + 0.01 * k), c[2] * (1 - 0.14 * k)]; }
+function atmos(c, Z, sx, k) { return mix(warm(c), hazeColor(sx), hazeAmt(Z, k)); }
+
+/* ---------- sky ---------- */
+function sky(o) {
+  o = o || {};
+  const g = ctx.createLinearGradient(0, 0, 0, cam.hy + 40);
+  g.addColorStop(0, rgb(o.top || [214, 214, 206]));
+  g.addColorStop(0.55, rgb(o.mid || [238, 228, 206]));
+  g.addColorStop(1, rgb(o.low || [251, 226, 176]));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, cam.hy + 60);
+  // sun glow
+  let rg = ctx.createRadialGradient(SUN.x, SUN.y, 0, SUN.x, SUN.y, W * 0.55);
+  rg.addColorStop(0, "rgba(255,244,214,.95)"); rg.addColorStop(0.08, "rgba(255,232,180,.75)");
+  rg.addColorStop(0.3, "rgba(255,214,150,.28)"); rg.addColorStop(1, "rgba(255,214,150,0)");
+  ctx.fillStyle = rg; ctx.fillRect(0, 0, W, cam.hy + 60);
+  // soft cloud streaks
+  const r = rng(o.seed || 3);
+  ctx.save(); ctx.filter = "blur(26px)";
+  for (let i = 0; i < 9; i++) {
+    const y = 120 + r() * (cam.hy * 0.7), x = r() * W, w = 500 + r() * 1100;
+    ctx.fillStyle = `rgba(255,${238 + r() * 14 | 0},${214 + r() * 20 | 0},${0.18 + r() * 0.22})`;
+    ctx.beginPath(); ctx.ellipse(x, y, w, 18 + r() * 30, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------- distant hills on the horizon ---------- */
+function hills(o) {
+  const layers = o.layers || 3;
+  for (let L = 0; L < layers; L++) {
+    const base = cam.hy + 2, amp = (o.amp || 260) * (1 - L * 0.28), seed = (o.seed || 1) * 31 + L * 7;
+    const far = L / Math.max(1, layers - 1);
+    ctx.beginPath(); ctx.moveTo(0, base);
+    for (let x = 0; x <= W; x += 8) {
+      const t = x / W;
+      let n = fbm(t * (2.2 + L), 0.5, seed, 5);
+      n = Math.pow(clamp((n - 0.28) / 0.72, 0, 1), 1.4);
+      const env = o.env ? o.env(t) : 1;
+      ctx.lineTo(x, base - amp * n * env - (o.lift || 0) * (1 - far));
+    }
+    ctx.lineTo(W, base); ctx.closePath();
+    const top = base - amp;
+    const g = ctx.createLinearGradient(0, top, 0, base);
+    const hc = mix(o.color || [150, 150, 140], [226, 210, 180], 0.62 - L * 0.22);
+    g.addColorStop(0, rgb(mix(hc, [236, 220, 192], 0.1)));
+    g.addColorStop(1, rgb(mix(hc, [248, 226, 186], 0.6)));
+    ctx.fillStyle = g; ctx.fill();
+  }
+  // haze line hugging the horizon
+  const hg = ctx.createLinearGradient(0, cam.hy - 70, 0, cam.hy + 40);
+  hg.addColorStop(0, "rgba(250,228,186,0)"); hg.addColorStop(0.6, "rgba(250,228,186,.75)"); hg.addColorStop(1, "rgba(250,228,186,.2)");
+  ctx.fillStyle = hg; ctx.fillRect(0, cam.hy - 70, W, 110);
+}
+
+/* ---------- per-pixel ground ---------- */
+function ground(fn) {
+  const y0 = Math.ceil(cam.hy) + 1;
+  const img = ctx.getImageData(0, y0, W, H - y0), d = img.data;
+  for (let sy = y0; sy < H; sy++) {
+    const Z = cam.h * cam.f / (sy - cam.hy);
+    const fpZ = Z * Z / (cam.h * cam.f), fpX = Z / cam.f;   // metres per pixel (depth, sideways)
+    let i = (sy - y0) * W * 4;
+    for (let sx = 0; sx < W; sx++, i += 4) {
+      const X = (sx - cam.cx) * Z / cam.f;
+      let c0 = fn(X, Z, fpX, fpZ);
+      if (!c0.flat) {
+        const m = 0.86 + 0.26 * fbm(X * 0.012, Z * 0.012, 811, 3) + (Z < 2500 ? 0.08 * (vnoise(X * 0.7, Z * 0.7, 812) - 0.5) : 0);
+        c0 = [c0[0] * m, c0[1] * m, c0[2] * m];
+      }
+      const c = atmos(c0, Z, sx);
+      d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, y0);
+}
+// anti-aliased line coverage: distance d (m) to a line of width w, pixel footprint fp (m)
+function cover(d, w, fp) { return clamp(1 - (Math.abs(d) - w / 2) / Math.max(fp, 0.001), 0, 1); }
+
+/* fields: an irregular patchwork with bunds and furrows */
+const FIELD = [[92, 136, 40], [126, 162, 46], [78, 120, 34], [170, 148, 84], [140, 156, 58], [108, 148, 44]];
+function fields(X, Z, fpX, fpZ, seed) {
+  const wx = X + fbm(X * 0.004, Z * 0.004, seed + 5) * 60, wz = Z + fbm(X * 0.004, Z * 0.004, seed + 9) * 80;
+  const cw = 46, cd = 64, ix = Math.floor(wx / cw), iz = Math.floor(wz / cd);
+  const h = hash(ix, iz, seed);
+  let c = FIELD[Math.floor(h * FIELD.length)];
+  const lod = Z > 3000 ? 2 : 4;
+  const n = fbm(X * 0.09, Z * 0.09, seed + 1, lod);
+  c = mix(c, [c[0] * 0.8, c[1] * 0.85, c[2] * 0.8], n * 0.6);
+  if (h > 0.55 && Z < 2600) { const s = Math.sin(wx * 2.2) * 0.5 + 0.5; c = mix(c, [c[0] * 0.86, c[1] * 0.9, c[2] * 0.85], s * 0.35 * (1 - Z / 2600)); }
+  const bx = Math.min(wx - ix * cw, (ix + 1) * cw - wx), bz = Math.min(wz - iz * cd, (iz + 1) * cd - wz);
+  const bund = Math.max(cover(bx, 1.2, fpX), cover(bz, 1.2, fpZ));
+  return mix(c, [70, 96, 44], bund * 0.7);
+}
+/* darken open ground beside tree masses (ambient occlusion) */
+function nearTrees(c, g, thr) { const k = smooth(thr - 0.07, thr, g); return [c[0] * (1 - 0.35 * k), c[1] * (1 - 0.3 * k), c[2] * (1 - 0.35 * k)]; }
+/* distant tree canopy texture (beyond the sprite range) */
+function canopyFar(X, Z, seed) {
+  const n = fbm(X * 0.05, Z * 0.05, seed + 3, Z > 4000 ? 2 : 3);
+  return mix([40, 62, 30], [104, 124, 50], n);
+}
+
+/* ---------- sprites ---------- */
+const sprites = [];
+function addSprite(Z, draw) { sprites.push({ Z, draw }); }
+function flush() { sprites.sort((a, b) => b.Z - a.Z); for (const s of sprites) s.draw(); sprites.length = 0; }
+const SHADOW = { dx: 0.32, dz: -1.0, len: 2.2 };   // low sun behind the scene: shadows fall toward the viewer
+function shadowBlob(X, Z, Y, rad, alpha) {
+  const L = Y * SHADOW.len, p = proj(X + SHADOW.dx * L * 0.6, Z + SHADOW.dz * L * 0.6);
+  const s = cam.f / Z;
+  ctx.fillStyle = `rgba(28,38,18,${alpha == null ? 0.38 : alpha})`;
+  ctx.beginPath(); ctx.ellipse(p[0], p[1], rad * s * 1.1, rad * s * (cam.h / Z) * 2.4 + rad * s * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function palm(X, Z, r, o) {
+  o = o || {};
+  const Y = o.h || (11 + r() * 5), R = (o.R || 4.4) * (0.8 + r() * 0.4), s = cam.f / Z;
+  const g = proj(X, Z), c = proj(X + (r() - 0.5) * 1.4, Z, Y);
+  const haze = hazeAmt(Z), hc = hazeColor(g[0]);
+  const col = (k) => rgb(mix(warm(k), hc, haze));
+  // trunk
+  ctx.strokeStyle = col([96, 82, 60]); ctx.lineWidth = Math.max(1, 0.32 * s); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.quadraticCurveTo((g[0] + c[0]) / 2 + (r() - 0.5) * 0.8 * s, (g[1] + c[1]) / 2, c[0], c[1]); ctx.stroke();
+  // crown
+  const n = 11 + (r() * 4 | 0), Rp = R * s, squash = 0.62;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + r() * 0.4;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const len = Rp * (0.75 + r() * 0.35);
+    const tx = c[0] + ca * len, ty = c[1] + sa * len * squash + Math.abs(ca) * len * 0.28;
+    const mx = c[0] + ca * len * 0.5, my = c[1] + sa * len * 0.5 * squash - len * 0.1;
+    const w = len * 0.17;
+    const lit = clamp(0.5 - 0.6 * sa + (r() - 0.5) * 0.4, 0, 1);  // fronds reaching away catch the low sun
+    let base = mix([34, 58, 24], [150, 168, 64], lit);
+    if (r() < 0.08) base = [150, 128, 64];
+    ctx.fillStyle = col(base);
+    ctx.beginPath(); ctx.moveTo(c[0], c[1]);
+    ctx.quadraticCurveTo(mx - sa * w, my + ca * w * squash, tx, ty);
+    ctx.quadraticCurveTo(mx + sa * w, my - ca * w * squash, c[0], c[1]); ctx.fill();
+  }
+  ctx.fillStyle = col([44, 50, 26]); ctx.beginPath(); ctx.ellipse(c[0], c[1], Rp * 0.14, Rp * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function roundTree(X, Z, r, o) {
+  o = o || {};
+  const Y = o.h || (6 + r() * 4), R = (o.R || 3.6) * (0.8 + r() * 0.45), s = cam.f / Z;
+  const c = proj(X, Z, Y * 0.7), Rp = R * s;
+  const haze = hazeAmt(Z), hc = hazeColor(c[0]);
+  const lobes = 7 + (r() * 4 | 0);
+  for (let k = 0; k < lobes; k++) {
+    const a = r() * Math.PI * 2, d = Rp * (0.25 + r() * 0.45);
+    const x = c[0] + Math.cos(a) * d, y = c[1] + Math.sin(a) * d * 0.7, rr = Rp * (0.45 + r() * 0.3);
+    const gr = ctx.createRadialGradient(x - rr * 0.2, y - rr * 0.45, rr * 0.1, x, y, rr);
+    const lite = o.lite || [156, 166, 70], body = o.body || [62, 92, 38], edge = o.edge || [30, 50, 22];
+    gr.addColorStop(0, rgb(mix(warm(lite), hc, haze))); gr.addColorStop(0.45, rgb(mix(warm(body), hc, haze))); gr.addColorStop(1, rgb(mix(edge, hc, haze)));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function palmyra(X, Z, r) {
+  const Y = 14 + r() * 6, s = cam.f / Z, g = proj(X, Z), c = proj(X, Z, Y), R = 3.2 * s;
+  const haze = hazeAmt(Z), hc = hazeColor(g[0]), col = (k) => rgb(mix(warm(k), hc, haze));
+  ctx.strokeStyle = col([70, 62, 50]); ctx.lineWidth = Math.max(1, 0.5 * s);
+  ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+  for (let k = 0; k < 22; k++) {
+    const a = r() * Math.PI * 2, d = R * (0.2 + r() * 0.6);
+    ctx.fillStyle = col(mix([40, 58, 30], [130, 140, 66], clamp(0.5 - Math.sin(a) * 0.6, 0, 1)));
+    ctx.beginPath(); ctx.arc(c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d * 0.7, R * (0.25 + r() * 0.2), 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function house(x0, z0, x1, z1, Y, r, o) {
+  o = o || {};
+  const cxw = (x0 + x1) / 2;
+  const P = (x, z, y) => proj(x, z, y);
+  const face = (pts, c) => { ctx.fillStyle = c; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill(); };
+  const Zm = (z0 + z1) / 2, haze = hazeAmt(Zm), hc = hazeColor(P(cxw, Zm)[0]);
+  const col = (k) => rgb(mix(k, hc, haze));
+  // shadow toward the viewer
+  const L = Y * SHADOW.len;
+  face([P(x0, z0), P(x1, z0), P(x1 + SHADOW.dx * L, z0 + SHADOW.dz * L), P(x0 + SHADOW.dx * L, z0 + SHADOW.dz * L)], "rgba(30,34,20,.42)");
+  const wall = o.wall || [232, 222, 206];
+  // side face (the one turned toward the camera)
+  if (cxw > 0) face([P(x0, z0), P(x0, z1), P(x0, z1, Y), P(x0, z0, Y)], col(mix(wall, [150, 140, 128], 0.25)));
+  else face([P(x1, z0), P(x1, z1), P(x1, z1, Y), P(x1, z0, Y)], col(mix(wall, [150, 140, 128], 0.25)));
+  // front face, in shade (backlit)
+  face([P(x0, z0), P(x1, z0), P(x1, z0, Y), P(x0, z0, Y)], col(mix(wall, [120, 110, 100], 0.45)));
+  // windows
+  const floors = Math.max(1, Math.round(Y / 3.3));
+  for (let f = 0; f < floors; f++) for (let wi = 0; wi < 3; wi++) {
+    const wx = x0 + (x1 - x0) * (0.15 + wi * 0.3), wy = f * 3.3 + 1;
+    face([P(wx, z0, wy), P(wx + (x1 - x0) * 0.14, z0, wy), P(wx + (x1 - x0) * 0.14, z0, wy + 1.4), P(wx, z0, wy + 1.4)], col(o.lit ? [255, 214, 140] : [70, 72, 70]));
+  }
+  // roof, lit by the sun
+  face([P(x0, z0, Y), P(x1, z0, Y), P(x1, z1, Y), P(x0, z1, Y)], col(warm(o.roof || [236, 228, 212], 0.6)));
+  ctx.strokeStyle = col([200, 190, 176]); ctx.lineWidth = Math.max(1, 0.25 * cam.f / Zm);
+  ctx.beginPath(); [P(x0 + 0.3, z0 + 0.3, Y), P(x1 - 0.3, z0 + 0.3, Y), P(x1 - 0.3, z1 - 0.3, Y), P(x0 + 0.3, z1 - 0.3, Y)].forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.stroke();
+  if (o.tank) face([P(x1 - 2.4, z1 - 2.4, Y), P(x1 - 0.8, z1 - 2.4, Y), P(x1 - 0.8, z1 - 2.4, Y + 1.6), P(x1 - 2.4, z1 - 2.4, Y + 1.6)], col([60, 60, 62]));
+}
+
+/* scatter trees across a mask */
+function scatter(seed, mask, spacing, zMin, zMax, draw) {
+  const r = rng(seed);
+  for (let gz = zMin; gz < zMax; gz += spacing) {
+    const half = (W / 2 + 200) * gz / cam.f;
+    for (let gx = -half; gx < half; gx += spacing) {
+      const X = gx + (r() - 0.5) * spacing * 0.9, Z = gz + (r() - 0.5) * spacing * 0.9;
+      if (!mask(X, Z)) continue;
+      addSprite(Z, () => draw(X, Z, r));
+    }
+  }
+}
+
+/* finishing: sun bloom over everything, vignette, grain */
+function finish(o) {
+  o = o || {};
+  ctx.save(); ctx.globalCompositeOperation = "screen";
+  const g = ctx.createRadialGradient(SUN.x, SUN.y + 40, 0, SUN.x, SUN.y + 40, W * 0.6);
+  g.addColorStop(0, "rgba(255,226,170,.55)"); g.addColorStop(0.25, "rgba(255,206,140,.22)"); g.addColorStop(1, "rgba(255,206,140,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  ctx.fillStyle = "rgba(255,246,226,.9)"; ctx.beginPath(); ctx.arc(SUN.x, SUN.y, SUN.r, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.filter = "blur(40px)"; ctx.fillStyle = "rgba(255,236,196,.8)"; ctx.beginPath(); ctx.arc(SUN.x, SUN.y, SUN.r * 1.8, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  const v = ctx.createRadialGradient(W / 2, H * 0.55, H * 0.4, W / 2, H * 0.55, H * 1.1);
+  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(30,24,10,.32)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const img = ctx.getImageData(0, 0, W, H), d = img.data, r = rng(99);
+  for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 10; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  ctx.putImageData(img, 0, 0);
+}
+
+const goldOut = (pts) => pts.map(p => [Math.round(p[0] * OUT * 10) / 10, Math.round(p[1] * OUT * 10) / 10]);
+function goldPoly(pts) { const s = goldOut(pts); return "M" + s.map(p => p.join(",")).join(" L") + " Z"; }
+function goldLine(pts) { const s = goldOut(pts); return "M" + s.map(p => p.join(",")).join(" L"); }
+
+/* ---------- scenes ---------- */
+const S = {};
+
+/* plotted layout among coconut groves, Ghats behind */
+function layoutScene(o) {
+  SUN = { x: W * (o.sunX || 0.3), y: cam.hy - 80, r: 70 };
+  sky({ seed: o.seed });
+  hills({ seed: o.seed, amp: 420, layers: 3, color: [96, 112, 104], env: t => 0.5 + 0.6 * Math.sin(t * 3.1 + 0.4) ** 2 });
+  const L = { x0: o.x0 || -170, x1: o.x1 || 150, z0: o.z0 || 520, z1: o.z1 || 1350 };
+  const plotW = 10, plotD = 13, road = 9;
+  // layout grid: blocks of two plot rows separated by roads (rows along X)
+  const rowsZ = [];
+  for (let z = L.z0 + road; z + plotD * 2 <= L.z1; z += plotD * 2 + road) rowsZ.push(z);
+  const cols = [];
+  for (let x = L.x0 + 4; x + plotW <= L.x1 - 14; x += plotW) cols.push(x);
+  const inLayout = (X, Z) => X > L.x0 && X < L.x1 && Z > L.z0 && Z < L.z1;
+  const groveMask = (X, Z) => !inLayout(X, Z) && Math.abs(X - (L.x1 + 30)) > 9 && fbm(X * 0.0045, Z * 0.0045, o.seed + 40) > 0.47;
+  ground((X, Z, fpX, fpZ) => {
+    if (inLayout(X, Z)) {
+      // internal roads
+      let onRoad = false;
+      for (const rz of rowsZ) if (Z > rz - road && Z < rz) onRoad = true;
+      if (Z > L.z0 && Z < L.z0 + road) onRoad = true;
+      if (X > L.x1 - 14 && X < L.x1 - 5) onRoad = true;
+      const n = fbm(X * 0.2, Z * 0.2, 7, Z > 2000 ? 2 : 3);
+      if (onRoad) return mix([150, 140, 126], [176, 166, 150], n);
+      if (X > L.x1 - 5) return mix([98, 128, 52], [126, 146, 60], n);   // green verge
+      // plots: earth with white boundary lines
+      let c = mix([188, 150, 108], [206, 172, 128], n);
+      const px = ((X - L.x0 - 4) % plotW + plotW) % plotW;
+      const lineX = Math.min(px, plotW - px);
+      let lineZ = 99;
+      for (const rz of rowsZ) { lineZ = Math.min(lineZ, Math.abs(Z - rz), Math.abs(Z - rz - plotD), Math.abs(Z - rz - plotD * 2)); }
+      const k = Math.max(cover(lineX, 0.35, fpX), cover(lineZ, 0.35, fpZ));
+      // a little grass on some plots
+      const pi = Math.floor((X - L.x0 - 4) / plotW), pz = Math.floor((Z - L.z0) / plotD);
+      if (hash(pi, pz, 3) > 0.7) c = mix(c, [120, 140, 66], 0.5 * fbm(X * 0.5, Z * 0.5, 4, 2));
+      return mix(c, [246, 240, 228], k * 0.9);
+    }
+    // the approach road along the right of the layout
+    if (Math.abs(X - (L.x1 + 30)) < 4.5) return [92, 90, 86];
+    if (groveMask(X, Z)) return Z < 3200 ? [44, 62, 30] : canopyFar(X, Z, o.seed);
+    return nearTrees(fields(X, Z, fpX, fpZ, o.seed), fbm(X * 0.0045, Z * 0.0045, o.seed + 40), 0.47);
+  });
+  // compound wall
+  ctx.strokeStyle = "rgba(240,232,220,.9)"; ctx.lineWidth = 3;
+  ctx.beginPath(); [proj(L.x0, L.z0, 1.2), proj(L.x1, L.z0, 1.2), proj(L.x1, L.z1, 1.2), proj(L.x0, L.z1, 1.2)].forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.stroke();
+  const r = rng(o.seed + 2);
+  // houses on some plots
+  rowsZ.forEach((rz, ri) => cols.forEach((cx, ci) => {
+    for (const side of [0, 1]) {
+      const z0 = rz + side * plotD, idx = ri * 2 + side;
+      if (o.highlight && o.highlight[0] === ci && o.highlight[1] === idx) continue;
+      if (hash(ci, idx, o.seed) < (o.built || 0.22)) {
+        const h = 3.4 * (1 + (hash(ci, idx, 5) > 0.6 ? 1 : 0));
+        addSprite(z0 + 2, () => house(cx + 1.5, z0 + (side ? 4 : 2), cx + plotW - 1.5, z0 + plotD - (side ? 2 : 4), h, r, { tank: hash(ci, idx, 9) > 0.5, lit: o.lit && hash(ci, idx, 11) > 0.4 }));
+      }
+    }
+  }));
+  // avenue trees along the internal roads
+  rowsZ.forEach((rz) => { for (let x = L.x0 + 8; x < L.x1 - 16; x += 22) addSprite(rz - 1, ((x, rz) => () => roundTree(x, rz - 1, r, { R: 2.4, h: 5 }))(x, rz)); });
+  // groves and fields trees
+  scatter(o.seed + 11, groveMask, 8.5, 300, 2400, (X, Z, rr) => palm(X, Z, rr));
+  scatter(o.seed + 12, (X, Z) => !inLayout(X, Z) && !groveMask(X, Z) && Math.abs(X - (L.x1 + 30)) > 8 && hash(Math.floor(X / 40), Math.floor(Z / 60), 4) > 0.86, 14, 300, 2200, (X, Z, rr) => palm(X, Z, rr));
+  flush();
+  finish();
+  // gold: the highlighted plot
+  const hl = o.highlight || [Math.floor(cols.length / 2), 2];
+  const hx = cols[hl[0]], hz = rowsZ[Math.floor(hl[1] / 2)] + (hl[1] % 2) * plotD;
+  return { gold: [goldPoly([proj(hx, hz), proj(hx + plotW, hz), proj(hx + plotW, hz + plotD), proj(hx, hz + plotD)])], horizon: cam.hy / H };
+}
+S["plots"] = () => layoutScene({ seed: 7, highlight: [9, 2], x0: -120, x1: 110, z0: 470, z1: 880 });
+S["plots-b"] = () => layoutScene({ seed: 21, sunX: 0.68, x0: -60, x1: 170, z0: 480, z1: 900, built: 0.35, highlight: [7, 3] });
+S["plots-close"] = () => { cam.h = 60; cam.f = 4600; const r = layoutScene({ seed: 7, highlight: [9, 2], x0: -120, x1: 110, z0: 300, z1: 700 }); cam.h = 120; cam.f = 3840; return r; };
+S["house"] = () => layoutScene({ seed: 15, built: 0.7, sunX: 0.62, x0: -100, x1: 120, z0: 460, z1: 820 });
+
+/* farmland and coconut groves at the foot of the Ghats, with a red-earth road */
+S["ghats"] = () => {
+  SUN = { x: W * 0.36, y: cam.hy - 120, r: 66 };
+  sky({ seed: 4 });
+  hills({ seed: 4, amp: 520, layers: 4, color: [112, 124, 112], env: t => 0.55 + 0.45 * Math.sin(t * 2.6 + 0.8) ** 2, lift: 40 });
+  const roadX = (Z) => 40 * Math.sin(Z * 0.0016) + 18 * Math.sin(Z * 0.0051 + 1) - 20;
+  const groves = (X, Z) => Math.abs(X - roadX(Z)) > 12 && fbm(X * 0.004, Z * 0.004, 50) > 0.5;
+  ground((X, Z, fpX, fpZ) => {
+    const dr = X - roadX(Z);
+    if (Math.abs(dr) < 3.2) return mix([176, 104, 64], [190, 124, 80], fbm(X * 0.3, Z * 0.3, 2, 2));
+    if (groves(X, Z)) return Z < 3200 ? [42, 60, 28] : canopyFar(X, Z, 4);
+    return nearTrees(fields(X, Z, fpX, fpZ, 4), fbm(X * 0.004, Z * 0.004, 50), 0.5);
+  });
+  scatter(31, groves, 8.5, 300, 2500, (X, Z, r) => palm(X, Z, r));
+  scatter(32, (X, Z) => !groves(X, Z) && Math.abs(X - roadX(Z)) > 7 && hash(Math.floor(X / 46), Math.floor(Z / 64), 4) > 0.8, 12, 300, 2200, (X, Z, r) => palm(X, Z, r));
+  flush(); finish();
+  const pts = []; for (let Z = 380; Z < 9000; Z *= 1.06) pts.push(proj(roadX(Z), Z));
+  return { gold: [goldLine(pts)], horizon: cam.hy / H, open: true };
+};
+
+/* a coconut grove with one open field traced in gold */
+function farmScene(o) {
+  SUN = { x: W * (o.sunX || 0.62), y: cam.hy - 90, r: 70 };
+  sky({ seed: o.seed });
+  hills({ seed: o.seed, amp: 260, color: [124, 134, 116] });
+  const F = { x0: -90, x1: 40, z0: 560, z1: 1050 };
+  const inF = (X, Z) => X > F.x0 && X < F.x1 && Z > F.z0 && Z < F.z1;
+  const grove = (X, Z) => !inF(X, Z) && fbm(X * 0.003, Z * 0.003, o.seed + 60) > 0.47;
+  ground((X, Z, fpX, fpZ) => {
+    if (inF(X, Z)) { const s = Math.sin(X * 1.6) * 0.5 + 0.5; return mix(mix([128, 156, 60], [150, 168, 70], fbm(X * 0.1, Z * 0.1, 5, 3)), [96, 128, 48], s * 0.35); }
+    if (grove(X, Z)) return Z < 3200 ? (o.mango ? [52, 70, 34] : [44, 62, 30]) : canopyFar(X, Z, o.seed);
+    return nearTrees(fields(X, Z, fpX, fpZ, o.seed), inF(X, Z) ? 0 : fbm(X * 0.003, Z * 0.003, o.seed + 60), 0.47);
+  });
+  if (o.mango) scatter(o.seed + 3, grove, 10, 300, 2600, (X, Z, r) => roundTree(X, Z, r, { R: 4.2 }));
+  else scatter(o.seed + 3, grove, 8, 300, 2600, (X, Z, r) => palm(X, Z, r));
+  flush(); finish();
+  return { gold: [goldPoly([proj(F.x0, F.z0), proj(F.x1, F.z0), proj(F.x1, F.z1), proj(F.x0, F.z1)])], horizon: cam.hy / H };
+}
+S["farm"] = () => farmScene({ seed: 3 });
+S["farm-b"] = () => farmScene({ seed: 17, sunX: 0.3 });
+S["mango"] = () => farmScene({ seed: 12, mango: true, sunX: 0.4 });
+
+/* palm-lined river (Kerala) */
+S["river"] = () => {
+  SUN = { x: W * 0.5, y: cam.hy - 70, r: 64 };
+  sky({ seed: 5 });
+  hills({ seed: 5, amp: 360, layers: 3, color: [104, 126, 104] });
+  const rx = (Z) => 70 * Math.sin(Z * 0.0012 + 0.6) - 30 + 30 * Math.sin(Z * 0.004);
+  const rw = (Z) => 34 + Z * 0.004;
+  const water = (X, Z) => Math.abs(X - rx(Z)) < rw(Z) / 2;
+  const banks = (X, Z) => !water(X, Z) && (Math.abs(X - rx(Z)) < rw(Z) / 2 + 40 || fbm(X * 0.004, Z * 0.004, 70) > 0.46);
+  ground((X, Z, fpX, fpZ) => {
+    if (water(X, Z)) {
+      const sx = cam.cx + X * cam.f / Z, glit = sunNear(sx);
+      const rip = fbm(X * 0.4, Z * 0.05, 9, 3);
+      return mix(mix([92, 112, 104], [236, 214, 164], 0.3 + glit * 0.6), [255, 236, 190], glit * rip * 0.5);
+    }
+    if (banks(X, Z)) return Z < 3200 ? [40, 66, 30] : canopyFar(X, Z, 5);
+    return fields(X, Z, fpX, fpZ, 5);
+  });
+  scatter(41, banks, 8, 300, 2600, (X, Z, r) => palm(X, Z, r));
+  flush(); finish();
+  const pts = [], Z0 = 520, Z1 = 900;
+  for (let Z = Z0; Z <= Z1; Z += 20) pts.push(proj(rx(Z) + rw(Z) / 2 + 2, Z));
+  pts.push(proj(rx(Z1) + 90, Z1), proj(rx(Z0) + 90, Z0));
+  return { gold: [goldPoly(pts)], horizon: cam.hy / H };
+};
+
+/* coast: sea at the horizon, salt pans, palms */
+S["coast"] = () => {
+  SUN = { x: W * 0.58, y: cam.hy - 50, r: 72 };
+  sky({ seed: 6, low: [252, 220, 168] });
+  const shore = (X) => 2600 + 300 * Math.sin(X * 0.002);
+  const pans = (X, Z) => X < -70 && X > -330 && Z > 620 && Z < 1300;
+  ground((X, Z, fpX, fpZ) => {
+    if (Z > shore(X)) {
+      const sx = cam.cx + X * cam.f / Z, glit = sunNear(sx) ** 3;
+      return mix([110, 138, 140], [255, 232, 186], 0.25 + glit * 0.75 * fbm(X * 0.2, Z * 0.02, 3, 2));
+    }
+    if (Z > shore(X) - 120) return [214, 192, 150];
+    if (pans(X, Z)) {
+      const px = ((X % 22) + 22) % 22, pz = ((Z % 30) + 30) % 30;
+      const bund = Math.max(cover(Math.min(px, 22 - px), 1.6, fpX), cover(Math.min(pz, 30 - pz), 1.6, fpZ));
+      const h = hash(Math.floor(X / 22), Math.floor(Z / 30), 2);
+      const pan = h > 0.75 ? [150, 170, 168] : mix([214, 200, 192], [188, 176, 168], h);
+      return mix(pan, [142, 124, 96], bund);
+    }
+    return mix(fields(X, Z, fpX, fpZ, 6), [176, 160, 112], 0.25);
+  });
+  scatter(51, (X, Z) => !pans(X, Z) && Z < shore(X) - 150 && fbm(X * 0.005, Z * 0.005, 52) > 0.5, 10, 300, 2400, (X, Z, r) => (r() > 0.5 ? palm(X, Z, r) : palmyra(X, Z, r)));
+  flush(); finish();
+  return { gold: [goldPoly([proj(20, 560), proj(90, 560), proj(90, 760), proj(20, 760)])], horizon: cam.hy / H };
+};
+
+/* plains: palmyra and wind turbines */
+S["plains"] = () => {
+  SUN = { x: W * 0.32, y: cam.hy - 90, r: 66 };
+  sky({ seed: 8 });
+  hills({ seed: 8, amp: 200, color: [140, 140, 128] });
+  const dry = [[176, 152, 98], [160, 146, 90], [140, 136, 76], [186, 164, 110]];
+  ground((X, Z, fpX, fpZ) => {
+    if (Math.abs(X + 30) < 3.5) return [180, 116, 76];
+    const c = fields(X, Z, fpX, fpZ, 8);
+    const h = hash(Math.floor(X / 60), Math.floor(Z / 80), 8);
+    return mix(c, dry[Math.floor(h * dry.length)], 0.6);
+  });
+  scatter(61, (X, Z) => hash(Math.floor(X / 24), Math.floor(Z / 24), 61) > 0.82, 14, 300, 3000, (X, Z, r) => palmyra(X, Z, r));
+  // turbines
+  [[-900, 3800], [-300, 4600], [400, 3600], [1100, 5200], [1700, 4200]].forEach(([X, Z]) => addSprite(Z, () => {
+    const g = proj(X, Z), hub = proj(X, Z, 90), s = cam.f / Z, haze = hazeAmt(Z), c = rgb(mix([246, 242, 234], hazeColor(g[0]), haze * 0.7));
+    ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.5, 3 * s); ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.lineTo(hub[0], hub[1]); ctx.stroke();
+    const a0 = Math.random() * 6;
+    ctx.lineWidth = Math.max(1, 2 * s);
+    for (let k = 0; k < 3; k++) { const a = a0 + k * 2.094; ctx.beginPath(); ctx.moveTo(hub[0], hub[1]); ctx.lineTo(hub[0] + Math.cos(a) * 45 * s, hub[1] + Math.sin(a) * 45 * s); ctx.stroke(); }
+  }));
+  flush(); finish();
+  return { gold: [goldPoly([proj(10, 600), proj(80, 600), proj(80, 820), proj(10, 820)])], horizon: cam.hy / H };
+};
+
+/* highway frontage */
+S["highway"] = () => {
+  SUN = { x: W * 0.5, y: cam.hy - 60, r: 64 };
+  sky({ seed: 9 });
+  hills({ seed: 9, amp: 240, color: [130, 136, 122] });
+  ground((X, Z, fpX, fpZ) => {
+    const a = Math.abs(X);
+    if (a < 8) {
+      let c = mix([78, 78, 76], [96, 94, 90], fbm(X * 0.5, Z * 0.05, 1, 2));
+      const dash = (Z % 18) < 9 ? 1 : 0;
+      c = mix(c, [236, 232, 220], cover(X, 0.25, fpX) * dash);
+      c = mix(c, [236, 232, 220], cover(a - 7.2, 0.25, fpX));
+      return c;
+    }
+    if (a < 11) return [168, 150, 120];
+    if (X > 11 && X < 45 && Z > 520 && Z < 760) return mix([190, 160, 116], [176, 150, 108], fbm(X * 0.2, Z * 0.2, 2, 3));
+    return fields(X, Z, fpX, fpZ, 9);
+  });
+  scatter(71, (X, Z) => Math.abs(X) > 14 && !(X > 11 && X < 45 && Z > 520 && Z < 760) && hash(Math.floor(X / 30), Math.floor(Z / 40), 71) > 0.7, 12, 300, 2400, (X, Z, r) => (r() > 0.5 ? roundTree(X, Z, r) : palm(X, Z, r)));
+  const r = rng(72);
+  for (let i = 0; i < 14; i++) { const X = -60 - r() * 160, Z = 700 + r() * 1600; addSprite(Z, () => house(X, Z, X + 14 + r() * 10, Z + 12, 4 + r() * 6, r, { tank: true })); }
+  flush(); finish();
+  return { gold: [goldPoly([proj(11, 520), proj(45, 520), proj(45, 760), proj(11, 760)])], horizon: cam.hy / H };
+};
+
+/* hills with tea rows (Ooty) or pines (Kodaikanal) */
+function hillScene(o) {
+  SUN = { x: W * (o.sunX || 0.45), y: H * 0.2, r: 60 };
+  cam.hy = H * 0.42;
+  sky({ seed: o.seed, top: [206, 214, 212], mid: [234, 230, 214], low: [248, 228, 188] });
+  const r = rng(o.seed);
+  const ridge = (L, n) => {
+    const pts = [], amp = 180 + L * 90, base = H * (0.38 + L * 0.1), seed = o.seed * 13 + L;
+    for (let x = -20; x <= W + 20; x += 10) { const t = x / W; const v = fbm(t * (2 + L * 0.7), L, seed, 5); pts.push([x, base - amp * Math.pow(v, 1.3) * (0.6 + 0.8 * Math.abs(t - 0.5))]); }
+    return pts;
+  };
+  const fillRidge = (pts, cTop, cBot, yBot) => {
+    ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.lineTo(W + 20, H + 20); ctx.lineTo(-20, H + 20); ctx.closePath();
+    let minY = H; pts.forEach(p => { if (p[1] < minY) minY = p[1]; });
+    const g = ctx.createLinearGradient(0, minY, 0, yBot); g.addColorStop(0, rgb(cTop)); g.addColorStop(1, rgb(cBot)); ctx.fillStyle = g; ctx.fill();
+  };
+  const layers = 5;
+  for (let L = 0; L < layers; L++) {
+    const pts = ridge(L), t = L / (layers - 1);
+    const top = mix([206, 206, 196], [58, 90, 52], t), bot = mix([236, 226, 204], [90, 120, 64], t * 0.9);
+    fillRidge(pts, warm(top, 0.6), bot, pts[0][1] + 500);
+    // rim light along the ridge
+    ctx.save(); ctx.strokeStyle = `rgba(255,226,160,${0.35 - t * 0.2})`; ctx.lineWidth = 4; ctx.filter = "blur(2px)";
+    ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.restore();
+    // forest texture on nearer layers
+    if (L >= 2) {
+      ctx.save(); ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.lineTo(W + 20, H + 20); ctx.lineTo(-20, H + 20); ctx.closePath(); ctx.clip();
+      for (let k = 0; k < 2600 * (L - 1); k++) {
+        const x = r() * W, i = Math.min(pts.length - 1, Math.max(0, Math.round((x + 20) / 10))), y = pts[i][1] + r() * 420;
+        const s = 3 + t * 9;
+        ctx.fillStyle = rgb(mix(mix([46, 74, 40], [130, 148, 70], r() * 0.6), [220, 214, 196], 1 - t));
+        ctx.beginPath(); ctx.arc(x, y, s * (0.6 + r()), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // valley mist
+    ctx.save(); ctx.filter = "blur(36px)"; ctx.fillStyle = `rgba(250,236,210,${0.55 - t * 0.25})`;
+    for (let m = 0; m < 6; m++) { ctx.beginPath(); ctx.ellipse(r() * W, pts[0][1] + 140 + r() * 160, 500 + r() * 600, 60 + r() * 50, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+  // near slope with rows
+  const top = []; for (let x = W * 0.3; x <= W + 40; x += 10) { const t = (x - W * 0.3) / (W * 0.7); top.push([x, H * 1.02 - t * H * 0.55 + Math.sin(t * 5) * 20]); }
+  ctx.save(); ctx.beginPath(); top.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.lineTo(W + 40, H + 40); ctx.lineTo(W * 0.3, H + 40); ctx.closePath();
+  const sg = ctx.createLinearGradient(0, H * 0.45, 0, H); sg.addColorStop(0, rgb(warm(o.tea ? [134, 170, 70] : [110, 140, 62]))); sg.addColorStop(1, rgb(o.tea ? [70, 106, 40] : [62, 92, 40]));
+  ctx.fillStyle = sg; ctx.fill(); ctx.clip();
+  let gold = null;
+  for (let k = 0, off = 14; off < 1100; off += 10 + off * 0.08, k++) {
+    const row = top.map(p => [p[0] - off * 0.35, p[1] + off]);
+    ctx.strokeStyle = o.tea ? "rgba(48,80,30,.55)" : "rgba(60,80,34,.35)"; ctx.lineWidth = 2 + off * 0.035;
+    ctx.beginPath(); row.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,236,170,.18)"; ctx.lineWidth = 1 + off * 0.01;
+    ctx.beginPath(); row.forEach((p, i) => i ? ctx.lineTo(p[0], p[1] - 2) : ctx.moveTo(p[0], p[1] - 2)); ctx.stroke();
+    if (k === 6) gold = row.filter(p => p[0] < W && p[1] < H);
+  }
+  ctx.restore();
+  // slope texture: mottling and scattered shade trees, small and soft
+  ctx.save(); ctx.beginPath(); top.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.lineTo(W + 40, H + 40); ctx.lineTo(W * 0.3, H + 40); ctx.closePath(); ctx.clip();
+  for (let k = 0; k < 900; k++) {
+    const x = W * 0.3 + r() * W * 0.7, y = H * 0.45 + r() * H * 0.6, s2 = 2 + (y - H * 0.45) * 0.012;
+    ctx.fillStyle = `rgba(${r() > 0.5 ? "40,62,26" : "200,206,120"},${0.08 + r() * 0.1})`;
+    ctx.beginPath(); ctx.ellipse(x, y, s2 * 6, s2 * 2.2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let k = 0; k < 0; k++) {
+    const x = W * 0.32 + r() * W * 0.68, y = H * 0.5 + r() * H * 0.5, rr = 6 + (y - H * 0.45) * 0.03;
+    const gr = ctx.createRadialGradient(x - rr * 0.2, y - rr * 0.5, rr * 0.1, x, y, rr);
+    gr.addColorStop(0, "rgb(170,176,84)"); gr.addColorStop(0.5, o.tea ? "rgb(60,96,40)" : "rgb(44,74,34)"); gr.addColorStop(1, "rgb(28,46,22)");
+    ctx.fillStyle = "rgba(26,36,16,.3)"; ctx.beginPath(); ctx.ellipse(x + rr * 0.6, y + rr * 0.9, rr * 1.1, rr * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  finish();
+  return { gold: gold ? [goldLine(gold)] : [], horizon: 0.42, open: true };
+}
+S["hills"] = () => hillScene({ seed: 5, sunX: 0.42 });
+S["tea"] = () => hillScene({ seed: 9, tea: true, sunX: 0.38 });
+
+/* ---------- run ---------- */
+const name = new URLSearchParams(location.search).get("scene") || "plots";
+const t0 = performance.now();
+window.__scene = S[name]();
+window.__scene.name = name;
+window.__scene.ms = Math.round(performance.now() - t0);
+window.__done = true;
+</script>
+</body>
+</html>

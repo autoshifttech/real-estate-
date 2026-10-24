@@ -59,6 +59,7 @@
     play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>',
     bubble: '<svg class="bubble" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 18.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 3.5z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
     close: '<svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>',
     chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg>',
     plot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>',
@@ -359,8 +360,23 @@
 
   /* ---------- cards ---------- */
 
+  /* A rendered golden-hour scene (assets/img/scenes) with its gold boundary overlay. */
+  function photo(scene, alt, o) {
+    o = o || {};
+    var meta = (window.TLP_SCENES || {})[scene] || {};
+    var gold = (meta.gold || []).map(function (d) {
+      return '<path class="gold-halo" d="' + d + '" pathLength="1"/><path class="gold-glow" d="' + d + '" pathLength="1"/><path class="gold-core" d="' + d + '" pathLength="1"/>';
+    }).join("");
+    return '<div class="photo"><img src="assets/img/scenes/' + scene + '.webp" alt="' + esc(alt || "") + '"' +
+      (o.eager ? ' fetchpriority="high"' : ' loading="lazy"') + ' decoding="async" width="1920" height="1200">' +
+      (gold && !o.noGold ? '<svg class="art-svg photo-gold" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><g class="gold">' + gold +
+        '<circle class="gold-spark" r="7" cx="-99" cy="-99"/></g></svg>' : "") + "</div>";
+  }
+  TLP.photo = photo;
+
   function art(p, extra) {
-    if (p.image) return '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy">';
+    if (p.image) return '<div class="photo"><img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy" decoding="async"></div>';
+    if (p.scene) return photo(p.scene, extra && extra.decorative ? "" : "Aerial view illustrating " + p.title, extra);
     var o = {}; for (var k in p.art) o[k] = p.art[k];
     o.layout = p.layout; o.label = "Illustration of " + p.title;
     if (p.art.kind === "plan" && o.focus == null) { o.focus = true; o.zoom = 1.45; o.focusY = 0.04; }
@@ -379,16 +395,35 @@
   function priceNote(p) { return p.priceNote && p.priceNote !== "total" ? "<small>" + esc(p.priceNote) + "</small>" : ""; }
   TLP.priceNote = priceNote;
 
+  var STATUS = { available: "Available", few: "Few plots left", sold: "Sold out" };
   TLP.card = function (p) {
-    var t = type(p.type), r = region(p.region);
+    var t = type(p.type), url = "property.html?id=" + encodeURIComponent(p.id);
+    var kind = t ? t.label.replace(/s$/, "") : "Property";
     return '<article class="card' + (p.status === "sold" ? " card--sold" : "") + '">' +
-      '<div class="card-media">' + art(p) + statusBadge(p) + '<span class="badge badge-type">' + esc(t ? t.label.replace(/s$/, "") : "") + "</span></div>" +
-      '<div class="card-body"><p class="card-loc">' + esc(p.location) + "</p>" +
-      '<h3 class="card-title"><a href="property.html?id=' + encodeURIComponent(p.id) + '">' + esc(p.title) + "</a></h3>" +
-      '<dl class="card-meta"><div><dt>Area</dt><dd>' + esc(p.area) + "</dd></div><div><dt>Region</dt><dd>" + esc(r ? r.name : "") + "</dd></div></dl>" +
-      '<div class="card-foot"><p class="price">' + formatPrice(p.price) + priceNote(p) + "</p>" +
-      '<span class="card-go" aria-hidden="true">' + I.arrow + "</span></div></div></article>";
+      '<div class="card-media">' + art(p, { decorative: true }) + "</div>" +
+      '<div class="card-top"><span class="card-pills"><span class="pill-status is-' + esc(p.status) + '">' + I.check + esc(STATUS[p.status] || "Available") + "</span><span>" + esc(p.approval.split(" · ")[0]) + "</span></span>" +
+      '<button class="card-share" type="button" data-share="' + esc(url) + '" data-title="' + esc(p.title) + '" aria-label="Share ' + esc(p.title) + '">' + I.share + "</button></div>" +
+      '<div class="card-body">' +
+      '<h3 class="card-title"><a href="' + url + '">' + esc(p.title) + "</a></h3>" +
+      '<p class="card-sub">' + esc(kind) + " in " + esc(p.location) + "</p>" +
+      '<div class="card-chips"><span>' + formatPrice(p.price) + (p.priceNote === "onwards" ? "+" : "") + '</span><span>' + esc(p.area) + "</span></div>" +
+      '<p class="card-line"><b>' + esc(STATUS[p.status] || "Available") + ":</b> " + esc(p.road) + (p.facing ? " · " + esc(p.facing) : "") + "</p>" +
+      '<p class="card-desc">' + esc(p.summary) + "</p>" +
+      '<div class="card-actions"><a class="btn btn-light" href="' + url + '">View details</a>' +
+      '<a class="btn btn-ghost" href="' + waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener">' + I.whatsapp + "WhatsApp</a></div>" +
+      "</div></article>";
   };
+
+  /* share buttons on cards: native share sheet, or copy the link */
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-share]");
+    if (!b) return;
+    var url = new URL(b.getAttribute("data-share"), window.location.href).href, title = b.getAttribute("data-title");
+    var done = function (msg) { b.setAttribute("aria-label", msg); b.classList.add("is-done"); setTimeout(function () { b.classList.remove("is-done"); b.setAttribute("aria-label", "Share " + title); }, 1800); };
+    if (navigator.share) navigator.share({ title: title, url: url }).catch(function () {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { done("Link copied"); }, function () { window.prompt("Copy this link", url); });
+    else window.prompt("Copy this link", url);
+  });
 
   /* ---------- enquiry forms ---------- */
 
@@ -477,6 +512,7 @@
 
   /* decorative art blocks: <div data-art="ghats" data-seed="4" data-tea="1" data-focus="1"> */
   function arts() {
+    qsa("[data-scene]").forEach(function (el) { el.innerHTML = photo(el.dataset.scene, "", { noGold: el.dataset.gold === "0" }); });
     qsa("[data-art]").forEach(function (el) {
       var d = el.dataset;
       el.innerHTML = TLP.Art.render(d.art, { seed: +d.seed || 1, decorative: true, focus: d.focus === "1", tea: d.tea === "1", trees: d.trees, annotate: d.annotate === "1" });

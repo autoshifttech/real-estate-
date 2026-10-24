@@ -23,13 +23,19 @@
     // split the display lines into letters for the reveal
     captions.forEach(function (c) {
       var h = qs(".display", c), prefix = qs(".sr-only", h), n = 0;
-      var text = (h.getAttribute("data-text") || h.textContent).trim();
-      var spoken = (prefix ? prefix.textContent : "") + text;
-      h.innerHTML = '<span class="sr-only">' + esc(spoken) + '</span><span aria-hidden="true">' + text.split(" ").map(function (w) {
-        return '<span class="w">' + w.split("").map(function (ch) { return '<span class="ch" style="--i:' + (n++) + '">' + esc(ch) + "</span>"; }).join("") + "</span>";
-      }).join(" ") + "</span>";
+      var lines = qsa(".ln", h).map(function (l) { return { cls: l.className, text: l.textContent.trim() }; });
+      if (!lines.length) lines = [{ cls: "", text: (h.getAttribute("data-text") || h.textContent).trim() }];
+      var spoken = (prefix ? prefix.textContent : "") + lines.map(function (l) { return l.text; }).join(" ");
+      var split = function (text) {
+        return text.split(" ").map(function (w) {
+          return '<span class="w">' + w.split("").map(function (ch) { return '<span class="ch" style="--i:' + (n++) + '">' + esc(ch) + "</span>"; }).join("") + "</span>";
+        }).join(" ");
+      };
+      h.innerHTML = '<span class="sr-only">' + esc(spoken) + '</span><span aria-hidden="true">' + lines.map(function (l) {
+        return l.cls ? '<span class="' + l.cls + '">' + split(l.text) + "</span>" : split(l.text);
+      }).join("") + "</span>";
       c.classList.remove("is-active");
-      qsa(".eyebrow, .caption-ta, .caption-sub, .caption-actions", c).forEach(function (el) { el.classList.add("fade"); });
+      qsa(".eyebrow, .ad-loc, .caption-ta, .caption-sub, .caption-actions", c).forEach(function (el) { el.classList.add("fade"); });
     });
 
     // build scenes from each caption's data attributes
@@ -40,7 +46,14 @@
       var opts = { seed: +d.seed || 1, focus: d.focus === "1", tea: d.tea === "1", shift: d.shift ? +d.shift : undefined, focusX: +d.focusX || 0, focusY: +d.focusY || 0 };
       if (d.highlight) opts.highlight = +d.highlight;
       if (d.layout) opts.layout = layoutOf(d.layout);
-      TLP.Art.layers(d.kind, opts).forEach(function (l) {
+      // rendered golden-hour scene: one layer, slow push-in, gold line overlay
+      if (d.shot) {
+        var ph = document.createElement("div");
+        ph.className = "scene-layer scene-photo";
+        ph.dataset.depth = 1;
+        ph.innerHTML = TLP.photo(d.shot, "", { eager: !host.children.length });
+        el.appendChild(ph);
+      } else TLP.Art.layers(d.kind, opts).forEach(function (l) {
         var div = document.createElement("div");
         div.className = "scene-layer";
         div.dataset.depth = l.depth;
@@ -190,7 +203,7 @@
     artHost.insertAdjacentHTML("afterbegin", R.map(function (r, i) {
       var o = {}; for (var k in r.art) o[k] = r.art[k];
       o.label = "Illustration of " + r.name;
-      return '<div class="art-wrap' + (i === 0 ? " is-active" : "") + '" data-id="' + r.id + '">' + TLP.Art.render(r.art.kind, o) + "</div>";
+      return '<div class="art-wrap' + (i === 0 ? " is-active" : "") + '" data-id="' + r.id + '">' + (r.scene ? TLP.photo(r.scene, "Aerial view illustrating " + r.name) : TLP.Art.render(r.art.kind, o)) + "</div>";
     }).join(""));
 
     // survey chart: every region placed by latitude / longitude, linked to Tenkasi
@@ -262,13 +275,14 @@
       commercial: "Highway frontage and town-centre land for business.",
       house: "Ready-to-move independent houses in settled neighbourhoods."
     };
+    var sceneFor = { plot: "plots-b", farm: "farm", estate: "tea", commercial: "highway", house: "house" };
     var artFor = { plot: { kind: "plan", seed: 21 }, farm: { kind: "farm", seed: 3 }, estate: { kind: "hills", seed: 5 }, commercial: { kind: "highway", seed: 2 }, house: { kind: "plan", seed: 15, house: true, focus: true } };
     host.innerHTML = DATA.types.map(function (t, i) {
       var n = DATA.properties.filter(function (p) { return p.type === t.id && p.status !== "sold"; }).length;
       return '<a class="cat-row" href="properties.html?type=' + t.id + '" data-reveal style="--d:' + (i * 0.06) + 's">' +
         '<span class="num">0' + (i + 1) + "</span><h3>" + esc(t.label) + "</h3><p>" + esc(blurbs[t.id] || "") + "</p>" +
         '<span class="count">' + n + (n === 1 ? " listing" : " listings") + "</span>" + I.arrow +
-        '<span class="cat-thumb" aria-hidden="true">' + TLP.Art.render(artFor[t.id].kind, Object.assign({ decorative: true }, artFor[t.id])) + "</span></a>";
+        '<span class="cat-thumb" aria-hidden="true">' + TLP.photo(sceneFor[t.id], "", { noGold: true }) + "</span></a>";
     }).join("");
     TLP.observe(host);
   }
@@ -310,6 +324,7 @@
   /* ---------- watch reels, FAQ, form ---------- */
 
   function reels() {
+    qsa(".reel[data-reel]").forEach(function (el) { el.insertAdjacentHTML("afterbegin", TLP.photo(el.dataset.reel, "", { noGold: true })); });
     qsa(".reel[data-kind]").forEach(function (el) {
       el.insertAdjacentHTML("afterbegin", TLP.Art.render(el.dataset.kind, { seed: +el.dataset.seed || 1, tea: el.dataset.tea === "1", trees: el.dataset.trees, decorative: true }));
     });
