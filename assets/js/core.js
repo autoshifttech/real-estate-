@@ -59,44 +59,125 @@
     play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>',
     bubble: '<svg class="bubble" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 18.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 3.5z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
     close: '<svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    mark: '<svg class="brand-mark" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M2 25 L12 11 L17 17.5 L23.5 7 L38 25"/><path pathLength="1" d="M7 31 L20 27 L33 31 L20 35 Z"/></svg>'
+    chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+    ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg>',
+    plot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>',
+    farm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 21V11M12 11C12 7 9 5 5 5c0 4 3 6 7 6zM12 14c0-4 3-6 7-6 0 4-3 6-7 6z"/></svg>',
+    estate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 20l6.5-11 4 6.5 3-4.5 5.5 9z"/></svg>',
+    commercial: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-6h14l2 6zM9 20v-6h6v6"/></svg>',
+    house: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg>',
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14.5 8.5l2 2"/></svg>',
+    tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/></svg>',
+    video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 14l2 2 4-4"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>',
+    route: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/></svg>',
+    help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>',
+    mark: '<svg class="brand-mark" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M2 25 L12 11 L17 17.5 L23.5 7 L38 25"/><path pathLength="1" d="M7 31 L20 27 L33 31 L20 35 Z"/></svg>'
   };
   TLP.icons = I;
 
   /* ---------- header, menu, footer, chat ---------- */
 
-  var NAV = [
-    { href: "index.html", label: "Home", page: "home" },
-    { href: "properties.html", label: "Properties", page: "properties" },
-    { href: "index.html#regions", label: "Locations", page: "locations" },
-    { href: "about.html", label: "About", page: "about" },
-    { href: "contact.html", label: "Contact", page: "contact" }
-  ];
+  /* The main menu: four dropdowns and a plain Contact link. */
+  function navModel() {
+    var live = function (k, v) { return DATA.properties.filter(function (p) { return p[k] === v && p.status !== "sold"; }).length; };
+    var typeInfo = {
+      plot: ["plot", "Approved layouts, ready to build"],
+      farm: ["farm", "Coconut, mango and open farmland"],
+      estate: ["estate", "Kodaikanal and Ooty hill land"],
+      commercial: ["commercial", "Highway and town frontage"],
+      house: ["house", "Ready-to-move homes"]
+    };
+    var featured = DATA.properties.filter(function (p) { return p.featured && p.status !== "sold"; })[0];
+    return [
+      {
+        id: "properties", label: "Properties", pages: ["properties"], wide: true, feature: featured,
+        links: DATA.types.map(function (t) { return { href: "properties.html?type=" + t.id, icon: (typeInfo[t.id] || [])[0], title: t.label, text: (typeInfo[t.id] || [])[1], meta: live("type", t.id) }; }),
+        foot: { href: "properties.html", label: "All properties", note: DATA.properties.length + " listings" }
+      },
+      {
+        id: "locations", label: "Locations", grid: true,
+        links: DATA.regions.map(function (r) { return { href: "properties.html?region=" + r.id, title: r.name, ta: r.ta, meta: live("region", r.id) }; }),
+        foot: { href: "index.html#regions", label: "Explore the map", note: "Tamil Nadu & Kerala" }
+      },
+      {
+        id: "services", label: "Services",
+        links: [
+          { href: "properties.html", icon: "key", title: "Buy land", text: "Plots, farms and estates, all on video" },
+          { href: "contact.html?tab=sell#enquiry", icon: "tag", title: "Sell your land", text: "We film it and bring genuine buyers" },
+          { href: "contact.html#enquiry", icon: "pin", title: "Site visits", text: "Walk the boundary with our team" },
+          { href: "index.html#watch", icon: "video", title: "Video walkthroughs", text: "See the land before you travel" },
+          { href: "index.html#how", icon: "doc", title: "Document checks", text: "Patta, chitta, EC and approvals up front" }
+        ]
+      },
+      {
+        id: "company", label: "Company", pages: ["about"],
+        links: [
+          { href: "about.html", icon: "users", title: "About us", text: "Rooted in Tenkasi" },
+          { href: "index.html#how", icon: "route", title: "How it works", text: "From first call to registration" },
+          { href: "index.html#faqs", icon: "help", title: "FAQs", text: "Good to know before you buy" },
+          { href: CFG.instagram, icon: "instagram", title: "Instagram", text: (CFG.stats && CFG.stats.followers ? CFG.stats.followers + " followers" : "Follow us"), ext: true },
+          { href: CFG.youtube, icon: "youtube", title: "YouTube", text: "Property walkthrough videos", ext: true }
+        ]
+      }
+    ];
+  }
+
+  function menuLink(l) {
+    return '<li><a class="menu-link" href="' + esc(l.href) + '"' + (l.ext ? ' target="_blank" rel="noopener"' : "") + ">" +
+      (l.icon ? '<span class="menu-ico">' + I[l.icon] + "</span>" : "") +
+      '<span class="menu-text"><b>' + esc(l.title) + (l.ext ? I.ext + '<span class="sr-only"> (opens in a new tab)</span>' : "") + "</b>" +
+      (l.text ? "<small>" + esc(l.text) + "</small>" : "") + (l.ta ? '<small lang="ta">' + esc(l.ta) + "</small>" : "") + "</span>" +
+      (l.meta != null ? '<span class="menu-meta">' + l.meta + '<span class="sr-only"> ' + (l.meta === 1 ? "listing" : "listings") + "</span></span>" : "") +
+      "</a></li>";
+  }
+
+  function menuPanel(m) {
+    var html = '<ul class="menu-list">' + m.links.map(menuLink).join("") + "</ul>";
+    if (m.feature) {
+      var f = m.feature, r = region(f.region);
+      html += '<a class="menu-feature" href="property.html?id=' + encodeURIComponent(f.id) + '"><span class="menu-feature-art" data-feature="' + esc(f.id) + '"></span>' +
+        '<span class="menu-feature-body"><small>Featured</small><b>' + esc(f.title) + "</b><span>" + formatPrice(f.price) + (f.priceNote === "onwards" ? " onwards" : "") + " · " + esc(r ? r.name : "") + "</span></span></a>";
+    }
+    if (m.foot) html += '<div class="menu-foot"><a href="' + esc(m.foot.href) + '">' + esc(m.foot.label) + I.arrow + "</a><span>" + esc(m.foot.note || "") + "</span></div>";
+    return html;
+  }
 
   function brand() {
-    return '<a class="brand" href="index.html" aria-label="' + esc(CFG.name) + ' — home">' + I.mark +
+    return '<a class="brand" href="index.html" aria-label="' + esc(CFG.name) + ' — home"><span class="brand-badge">' + I.mark + "</span>" +
       '<span class="brand-word"><strong>' + esc(CFG.shortName || "Tenkasi") + "</strong><small>" + esc(CFG.tagline || "Land Promoters") + "</small></span></a>";
   }
 
   function renderChrome() {
     var page = document.body.getAttribute("data-page") || "";
-    var nav = NAV.map(function (n) {
-      return '<a href="' + n.href + '"' + (n.page === page ? ' aria-current="page"' : "") + ">" + n.label + "</a>";
-    }).join("");
+    var model = navModel();
+    var contactCurrent = page === "contact" ? ' aria-current="page"' : "";
+    var nav = model.map(function (m) {
+      var current = (m.pages || []).indexOf(page) >= 0;
+      return '<li class="nav-item has-menu' + (current ? " is-current" : "") + '">' +
+        '<button class="nav-trigger" type="button" aria-expanded="false" aria-controls="menu-' + m.id + '">' + m.label +
+        (current ? '<span class="sr-only"> (current section)</span>' : "") + I.chevDown + "</button>" +
+        '<div class="nav-menu' + (m.wide ? " nav-menu--wide" : "") + (m.grid ? " nav-menu--grid" : "") + '" id="menu-' + m.id + '">' + menuPanel(m) + "</div></li>";
+    }).join("") + '<li class="nav-item"><a class="nav-link" href="contact.html"' + contactCurrent + ">Contact</a></li>";
+
+    var mobile = model.map(function (m) {
+      return '<details class="m-group"><summary>' + m.label + I.chevDown + "</summary>" +
+        '<ul class="menu-list">' + m.links.map(menuLink).join("") + (m.foot ? '<li><a class="m-foot" href="' + esc(m.foot.href) + '">' + esc(m.foot.label) + I.arrow + "</a></li>" : "") + "</ul></details>";
+    }).join("") + '<a class="m-link" href="contact.html"' + contactCurrent + ">Contact</a>";
+
     var header =
       '<a class="skip-link" href="#main">Skip to content</a>' +
-      '<header class="site-header" id="site-header"><div class="wrap">' + brand() +
-      '<nav class="nav" aria-label="Main">' + nav + "</nav>" +
-      '<div class="nav-actions"><a class="nav-sell" href="contact.html?tab=sell#enquiry">Sell your land</a>' +
-      '<a class="btn btn-primary" href="contact.html#enquiry">Book a site visit</a>' +
+      '<header class="site-header" id="site-header"><div class="nav-shell">' + brand() +
+      '<nav class="nav" aria-label="Main"><ul class="nav-list">' + nav + "</ul></nav>" +
+      '<div class="nav-actions"><a class="btn btn-primary" href="contact.html#enquiry">Book a site visit</a>' +
       '<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu"><span></span><span></span></button></div>' +
       "</div></header>" +
-      '<div class="mobile-menu" id="mobile-menu" aria-hidden="true"><nav aria-label="Mobile">' +
-      NAV.map(function (n, i) { return '<a href="' + n.href + '">' + n.label + "<small>0" + (i + 1) + "</small></a>"; }).join("") +
-      '<a href="contact.html?tab=sell#enquiry">Sell your land<small>06</small></a></nav>' +
-      '<div><div class="mobile-cta"><a class="btn btn-primary" href="contact.html#enquiry">Book a site visit</a>' +
-      '<a class="btn btn-ghost" href="' + waLink("Hi! I'd like to know more about your properties.") + '" target="_blank" rel="noopener">' + I.whatsapp + "WhatsApp us</a></div>" +
-      '<p class="tamil-line" lang="ta">' + esc(CFG.taglineTamil) + "</p></div></div>";
+      '<div class="menu-backdrop" aria-hidden="true"></div>' +
+      '<div class="mobile-menu" id="mobile-menu"><nav aria-label="Main (mobile)">' + mobile + "</nav>" +
+      '<div class="mobile-cta"><a class="btn btn-primary" href="contact.html#enquiry">Book a site visit</a>' +
+      '<a class="btn btn-light" href="' + waLink("Hi! I'd like to know more about your properties.") + '" target="_blank" rel="noopener">' + I.whatsapp + "WhatsApp us</a></div>" +
+      '<p class="tamil-line" lang="ta">' + esc(CFG.taglineTamil) + "</p></div>";
 
     var regionLinks = DATA.regions.map(function (r) { return '<li><a href="properties.html?region=' + r.id + '">' + esc(r.name) + "</a></li>"; }).join("");
     var footer =
@@ -149,9 +230,9 @@
     function update() {
       ticking = false;
       var y = window.scrollY, end = heroEnd();
-      header.classList.toggle("is-solid", y > end);
+      header.classList.toggle("is-solid", y > 20);
       var goingDown = y > lastY + 4, goingUp = y < lastY - 4;
-      if (y > end + 300 && goingDown && !document.body.classList.contains("menu-open")) header.classList.add("is-hidden");
+      if (y > end + 300 && goingDown && !document.body.classList.contains("menu-open") && !qs(".nav-item.is-open", header)) header.classList.add("is-hidden");
       else if (goingUp || y <= end + 300) header.classList.remove("is-hidden");
       lastY = y;
     }
@@ -159,17 +240,70 @@
     window.addEventListener("resize", update);
     update();
 
-    var toggle = qs(".menu-toggle"), menu = qs("#mobile-menu");
-    function setMenu(open) {
+    initDropdowns(header);
+
+    // mobile panel
+    var toggle = qs(".menu-toggle"), menu = qs("#mobile-menu"), backdrop = qs(".menu-backdrop");
+    function setMenu(open, refocus) {
       document.body.classList.toggle("menu-open", open);
       toggle.setAttribute("aria-expanded", String(open));
       toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-      menu.setAttribute("aria-hidden", String(!open));
       document.documentElement.style.overflow = open ? "hidden" : "";
+      if (open) header.classList.remove("is-hidden");
+      if (!open && refocus) toggle.focus();
     }
     toggle.addEventListener("click", function () { setMenu(!document.body.classList.contains("menu-open")); });
+    backdrop.addEventListener("click", function () { setMenu(false); });
     qsa("a", menu).forEach(function (a) { a.addEventListener("click", function () { setMenu(false); }); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && document.body.classList.contains("menu-open")) { setMenu(false); toggle.focus(); } });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && document.body.classList.contains("menu-open")) setMenu(false, true); });
+    window.matchMedia("(min-width: 1080px)").addEventListener("change", function (e) { if (e.matches) setMenu(false); });
+  }
+
+  /* Desktop dropdowns: hover (mouse) or click opens, Escape closes, arrow keys move between links. */
+  function initDropdowns(header) {
+    var items = qsa(".nav-item.has-menu", header), openItem = null, openedAt = 0, timer = 0;
+    var hover = window.matchMedia("(hover: hover) and (pointer: fine)");
+
+    function links(item) { return qsa(".nav-menu a", item); }
+    function open(item, focusFirst) {
+      clearTimeout(timer);
+      if (openItem && openItem !== item) close(openItem);
+      if (openItem !== item) openedAt = Date.now();
+      item.classList.add("is-open");
+      qs(".nav-trigger", item).setAttribute("aria-expanded", "true");
+      var slot = qs("[data-feature]:empty", item);
+      if (slot) { var p = property(slot.getAttribute("data-feature")); if (p) slot.innerHTML = art(p, { decorative: true }); }
+      openItem = item;
+      if (focusFirst) { var l = links(item)[0]; if (l) l.focus(); }
+    }
+    function close(item) {
+      item.classList.remove("is-open");
+      qs(".nav-trigger", item).setAttribute("aria-expanded", "false");
+      if (openItem === item) openItem = null;
+    }
+
+    items.forEach(function (item) {
+      var trigger = qs(".nav-trigger", item);
+      trigger.addEventListener("click", function () {
+        // a hover just opened it: keep it open instead of toggling straight back
+        if (item.classList.contains("is-open") && Date.now() - openedAt > 400) close(item); else open(item);
+      });
+      item.addEventListener("mouseenter", function () { if (hover.matches) open(item); });
+      item.addEventListener("mouseleave", function () { if (hover.matches) timer = setTimeout(function () { close(item); }, 180); });
+      item.addEventListener("focusout", function (e) { if (!item.contains(e.relatedTarget)) close(item); });
+      item.addEventListener("keydown", function (e) {
+        var ls = links(item), i = ls.indexOf(document.activeElement);
+        if (e.key === "Escape" && item.classList.contains("is-open")) { e.preventDefault(); close(item); trigger.focus(); }
+        else if (e.key === "ArrowDown" && e.target === trigger) { e.preventDefault(); open(item, true); }
+        else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && i >= 0) {
+          e.preventDefault();
+          ls[(i + (e.key === "ArrowDown" ? 1 : -1) + ls.length) % ls.length].focus();
+        }
+        else if ((e.key === "Home" || e.key === "End") && i >= 0) { e.preventDefault(); ls[e.key === "Home" ? 0 : ls.length - 1].focus(); }
+      });
+    });
+    document.addEventListener("click", function (e) { if (openItem && !openItem.contains(e.target)) close(openItem); });
+    window.addEventListener("scroll", function () { if (openItem && header.classList.contains("is-hidden")) close(openItem); }, { passive: true });
   }
 
   function initChat() {

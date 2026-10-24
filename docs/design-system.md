@@ -106,19 +106,42 @@ Modifiers: `.btn-block` (full width), `.btn-lg`. Inside `.form-card` the primary
 
 ### Header & navigation
 
-**Overview.** Persistent site navigation. Transparent over heroes, solid (`rgb(color-5 / .85)` + blur) after scrolling past them; hides on scroll down and returns on scroll up.
+**Overview.** Persistent site navigation: a floating white pill inset from the page edges, with a logo badge, four dropdown menus, a Contact link and one primary CTA. It hides when scrolling down past the hero and returns on scroll up. Use one per page; don't add a second CTA to the bar.
 
-**Tokens.** Height `--header-h`; nav pill padding `--space-2`, link padding `--space-3` `--space-7`, radius `--radius-full`; brand `--text-lg` / `--weight-semibold`.
+**Tokens.** Offset `--header-top` (12 → 16px); height `--nav-h` (60px); radius `--radius-full`; shadow `--shadow-md`; frosted fill `color-6` at 95% over `color-5`; logo badge `--space-13` circle in `color-1`; trigger padding `--space-3` `--space-7`, `--text-base` / `--weight-medium`; dropdown panel `--radius-lg`, `--shadow-sm`, `--border`; menu rows `--radius-md`, icon tiles `--space-13`.
 
-**Anatomy.** Brand (mark + wordmark) · nav pill (5 links) · actions ("Sell your land", primary CTA) · menu toggle (< 1080px) · full-screen mobile menu.
+**Anatomy & variants.**
 
-**States.** Link hover `color-5` fill; current page `aria-current="page"` → `color-1` pill; `.is-inverse` swaps to light text over dark heroes; `.is-solid`; `.is-hidden`.
+| Part | Content |
+|------|---------|
+| Brand | Logo badge + "Tenkasi / Land Promoters", links home |
+| Properties ⌄ | Five property types with icons, live listing counts and a featured-listing card; footer link to all properties |
+| Locations ⌄ | Seven regions in two columns with Tamil names and counts; footer link to the map |
+| Services ⌄ | Buy land, Sell your land, Site visits, Video walkthroughs, Document checks |
+| Company ⌄ | About us, How it works, FAQs, Instagram ↗, YouTube ↗ |
+| Contact | Plain link |
+| CTA | "Book a site visit" (`.btn-primary`) |
 
-**Accessibility.** Skip link first in the DOM. `<nav aria-label="Main">`. Menu toggle exposes `aria-expanded`, `aria-controls` and a changing `aria-label`; Escape closes the menu and returns focus to the toggle; links close it.
+Responsive: under 1080px the menus collapse into a round menu button that drops a white panel (`.mobile-menu`) under the pill, with each menu as a `<details>` section, then the CTA and WhatsApp. Under 560px the bar's CTA moves into that panel.
 
-**Content.** One-word link labels in sentence case.
+**States & interactions.**
 
-**Anti-patterns.** Hiding the primary CTA on desktop. Adding a sixth nav item instead of linking from a page. Making the header solid over the hero, which covers the story.
+| State | Treatment |
+|-------|-----------|
+| Trigger hover / open | `color-5` pill; chevron rotates 180° |
+| Current section | `color-5` pill with a `--border` ring; visually hidden "(current section)" |
+| Menu row hover / focus | `color-5` row; icon tile inverts to `color-1` |
+| Pill scrolled | Adds a `--border` ring |
+| Hidden | Slides up out of view; never while a menu is open |
+| Mobile open | Backdrop `color-1` at 35%, page scroll locked, chat button hidden |
+
+Pointer: menus open on hover with a 180ms close delay and a hover bridge across the gap; a click straight after a hover keeps the menu open instead of toggling it shut. Touch: tap toggles. Keyboard: Tab reaches each trigger; Enter/Space toggles; ↓ opens and focuses the first link; ↑/↓ move between links (wrapping), Home/End jump; Escape closes and returns focus to the trigger; tabbing out closes. Outside click closes. Featured-card art renders on first open.
+
+**Accessibility.** Skip link first in the DOM. `<nav aria-label="Main">` with a list of items; triggers are `<button>`s with `aria-expanded` and `aria-controls` (disclosure pattern, not `role="menu"`). Closed panels are `visibility: hidden`, so they leave the tab order. Listing counts carry visually hidden "listings"; external links announce "(opens in a new tab)". Menu button exposes `aria-expanded`, `aria-controls` and a changing label; Escape closes the panel and refocuses the button.
+
+**Content.** One-word trigger labels in sentence case. Menu rows: title of 1–3 words plus a description of at most 40 characters. Exactly one CTA.
+
+**Anti-patterns.** Opening menus on hover only (unusable on touch and keyboard). Using `role="menu"`, which makes screen readers expect application-style arrow navigation for ordinary site links. Putting a second CTA in the pill (the user can't tell which one matters). Nesting dropdowns inside dropdowns.
 
 ### Story hero (`.story`)
 

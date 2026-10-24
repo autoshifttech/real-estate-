@@ -6,6 +6,8 @@ The design follows the [Vinode](https://vinode.io/) design system: a cinematic, 
 
 ## Pages
 
+Every page shares a floating pill navigation bar with dropdowns for Properties, Locations, Services and Company (hover, click or keyboard), a Contact link and a "Book a site visit" button; on phones it becomes a menu button with expandable sections.
+
 | Page | File | What it does |
 |------|------|--------------|
 | Home | `index.html` | Five-scene scroll story with a dawn/dusk toggle, featured listings, regions explorer with a lat/long map, categories, process, sell banner, video section, FAQ, enquiry form |
