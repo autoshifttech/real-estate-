@@ -203,7 +203,7 @@
       '<li><a href="mailto:' + esc(CFG.email) + '">' + esc(CFG.email) + "</a></li>" +
       "<li>" + esc(CFG.address) + "</li><li>" + esc(CFG.hours) + "</li></ul></div>" +
       "</div>" +
-      '<p class="footer-big" aria-hidden="true">' + esc(CFG.shortName || "Tenkasi") + "</p>" +
+      '<p class="footer-big" aria-hidden="true">' + (CFG.shortName || "Tenkasi").split("").map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("") + "</p>" +
       '<div class="footer-bottom"><span>© ' + new Date().getFullYear() + " " + esc(CFG.name) + ". All rights reserved.</span>" +
       "<span>Prices and availability are indicative and may change. Please verify all documents before purchase.</span></div>" +
       "</div></footer>";
