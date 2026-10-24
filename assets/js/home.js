@@ -330,32 +330,39 @@
   function processLine() {
     var host = qs("#process");
     if (!host) return;
-    host.innerHTML = '<svg class="process-line" aria-hidden="true" preserveAspectRatio="none"><path class="base" pathLength="1"/><path class="glow" pathLength="1"/><path class="core" pathLength="1"/></svg>' +
+    host.innerHTML = '<div class="process-line" aria-hidden="true"><i></i></div>' +
       DATA.process.map(function (s, i) {
         return '<div class="step" data-reveal style="--d:' + (i * 0.08) + 's"><span class="step-dot"></span><span class="num">Step 0' + (i + 1) + "</span><h3>" + esc(s.title) + "</h3><p>" + esc(s.text) + "</p></div>";
       }).join("");
-    var svg = qs(".process-line", host), paths = qsa("path", svg), steps = qsa(".step", host);
-    function shape() {
-      var r = svg.getBoundingClientRect(), vertical = r.height > r.width;
-      var d = vertical ? "M2,0 L2," + r.height : "M0,12 L" + r.width + ",12";
-      svg.setAttribute("viewBox", "0 0 " + Math.max(1, r.width) + " " + Math.max(1, r.height));
-      paths.forEach(function (p) { p.setAttribute("d", d); });
-      return vertical;
+    var line = qs(".process-line", host), steps = qsa(".step", host), raf = 0;
+    var geo = { vertical: false, start: 0, end: 1, dots: [] };
+
+    // the line runs exactly from the first dot to the last one, horizontally or (on phones) vertically
+    function measure() {
+      var hr = host.getBoundingClientRect();
+      var c = steps.map(function (s) { var d = qs(".step-dot", s).getBoundingClientRect(); return [d.left + d.width / 2 - hr.left, d.top + d.height / 2 - hr.top]; });
+      geo.vertical = Math.abs(c[c.length - 1][1] - c[0][1]) > Math.abs(c[c.length - 1][0] - c[0][0]);
+      var k = geo.vertical ? 1 : 0;
+      geo.start = c[0][k]; geo.end = c[c.length - 1][k]; geo.dots = c.map(function (p) { return p[k]; });
+      line.classList.toggle("is-vertical", geo.vertical);
+      if (geo.vertical) { line.style.cssText = "left:" + (c[0][0] - 1) + "px;top:" + geo.start + "px;height:" + (geo.end - geo.start) + "px;width:2px"; }
+      else { line.style.cssText = "top:" + (c[0][1] - 1) + "px;left:" + geo.start + "px;width:" + (geo.end - geo.start) + "px;height:2px"; }
     }
-    var vertical = shape(), raf = 0;
     function update() {
       raf = 0;
-      var r = host.getBoundingClientRect(), vh = window.innerHeight;
-      var p = U.reduced() ? 1 : clamp((vh * 0.85 - r.top) / (r.height + vh * 0.35), 0, 1);
-      svg.style.setProperty("--draw", p.toFixed(3));
-      steps.forEach(function (s, i) {
-        var at = vertical ? (s.offsetTop + 8) / host.offsetHeight : (s.offsetLeft + 6) / host.offsetWidth;
-        s.classList.toggle("is-lit", p >= at - 0.001);
-      });
+      measure();
+      var r = host.getBoundingClientRect(), vh = window.innerHeight, p;
+      if (U.reduced()) p = 1;
+      else if (geo.vertical) p = clamp((vh * 0.7 - r.top - geo.start) / (geo.end - geo.start), 0, 1);  // fill follows a line 70% down the screen
+      else p = clamp((vh * 0.85 - r.top) / (vh * 0.4), 0, 1);                                          // fills while the row rises into view
+      line.style.setProperty("--draw", p.toFixed(4));
+      var reach = geo.start + p * (geo.end - geo.start);
+      steps.forEach(function (s, i) { s.classList.toggle("is-lit", reach >= geo.dots[i] - 1); });
     }
     window.addEventListener("scroll", function () { if (!raf) raf = requestAnimationFrame(update); }, { passive: true });
-    window.addEventListener("resize", function () { vertical = shape(); update(); });
-    update();
+    window.addEventListener("resize", function () { measure(); update(); });
+    window.addEventListener("load", function () { measure(); update(); });
+    measure(); update();
     TLP.observe(host);
   }
 
