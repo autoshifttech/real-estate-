@@ -381,6 +381,20 @@
     host.innerHTML = DATA.faqs.map(function (f) {
       return "<details><summary>" + esc(f.q) + "<i aria-hidden=\"true\"></i></summary><p>" + esc(f.a) + "</p></details>";
     }).join("");
+
+    // accordion: only one answer open at a time; with a mouse, hovering a question opens it
+    var items = qsa("details", host), timer = 0;
+    var canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+    function openOnly(d) { items.forEach(function (o) { if (o !== d && o.open) o.open = false; }); if (!d.open) d.open = true; }
+    items.forEach(function (d) {
+      d.addEventListener("toggle", function () { if (d.open) items.forEach(function (o) { if (o !== d) o.open = false; }); });
+      d.addEventListener("mouseenter", function () {
+        if (!canHover.matches) return;
+        clearTimeout(timer);
+        timer = setTimeout(function () { openOnly(d); }, 140);   // short delay so passing the pointer over doesn't flicker
+      });
+      d.addEventListener("mouseleave", function () { clearTimeout(timer); });
+    });
   }
 
   function form() {
