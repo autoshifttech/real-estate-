@@ -30,6 +30,7 @@
   function sync() {
     Array.prototype.forEach.call(chips.children, function (c) { c.setAttribute("aria-pressed", String(c.dataset.region === state.region)); });
     typeSel.value = state.type; budgetSel.value = state.budget; sortSel.value = state.sort; q.value = state.q;
+    TLP.refreshSelects();
   }
 
   function matches(p) {

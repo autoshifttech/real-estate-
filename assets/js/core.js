@@ -519,6 +519,132 @@
     });
   }
 
+  /* ---------- custom dropdowns ----------
+   * Replaces the look of every <select class> inside .field with a styled list (select-only
+   * combobox pattern). The native <select> stays in the form, hidden, and holds the value,
+   * so form code keeps reading/writing it. Options added later are picked up automatically;
+   * after setting select.value in code, call TLP.refreshSelects().
+   */
+  var selN = 0, openSel = null, header = null;
+  function enhanceSelect(sel) {
+    if (sel.dataset.enhanced) return;
+    sel.dataset.enhanced = "1";
+    var id = sel.id || "sel" + (++selN);
+    var wrap = document.createElement("div");
+    wrap.className = "select";
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    sel.tabIndex = -1;
+    sel.setAttribute("aria-hidden", "true");
+    sel.classList.add("select-native");
+
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "select-btn"; btn.id = id + "-combo";
+    btn.setAttribute("role", "combobox");
+    btn.setAttribute("aria-haspopup", "listbox");
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-controls", id + "-list");
+    btn.innerHTML = '<span class="select-value"></span>' + I.chevDown;
+    var list = document.createElement("ul");
+    list.className = "select-list"; list.id = id + "-list";
+    list.setAttribute("role", "listbox"); list.tabIndex = -1;
+    var lab = sel.id && qs('label[for="' + sel.id + '"]');
+    if (lab) {
+      lab.id = lab.id || id + "-label";
+      lab.htmlFor = btn.id;
+      btn.setAttribute("aria-labelledby", lab.id + " " + btn.id);
+      list.setAttribute("aria-labelledby", lab.id);
+    }
+    wrap.appendChild(btn); wrap.appendChild(list);
+    var valueEl = qs(".select-value", btn), active = -1, typed = "", typedAt = 0;
+
+    function opts() { return Array.prototype.slice.call(sel.options); }
+    function render() {
+      list.innerHTML = opts().map(function (o, i) {
+        return '<li role="option" id="' + id + "-o" + i + '" data-i="' + i + '" aria-selected="' + (i === sel.selectedIndex) + '"' +
+          (o.disabled ? ' aria-disabled="true"' : "") + ">" + esc(o.textContent) + I.check + "</li>";
+      }).join("");
+      sync();
+    }
+    function sync() {
+      var o = sel.options[sel.selectedIndex];
+      valueEl.textContent = o ? o.textContent : "";
+      wrap.classList.toggle("is-empty", !o || o.value === "");
+      btn.disabled = sel.disabled;
+      qsa("[role=option]", list).forEach(function (li, i) { li.setAttribute("aria-selected", String(i === sel.selectedIndex)); });
+    }
+    function setActive(i, scroll) {
+      var items = qsa("[role=option]", list);
+      if (!items.length) return;
+      active = Math.max(0, Math.min(items.length - 1, i));
+      items.forEach(function (li, k) { li.classList.toggle("is-active", k === active); });
+      btn.setAttribute("aria-activedescendant", items[active].id);
+      if (scroll) items[active].scrollIntoView({ block: "nearest" });
+    }
+    function open() {
+      if (btn.disabled || wrap.classList.contains("is-open")) return;
+      if (openSel && openSel !== close) openSel();
+      var r = btn.getBoundingClientRect(), below = window.innerHeight - r.bottom;
+      var need = Math.min(list.scrollHeight, 300) + 16;
+      wrap.classList.toggle("is-up", below < need && r.top - (header ? header.getBoundingClientRect().bottom : 0) > need);
+      wrap.classList.add("is-open");
+      btn.setAttribute("aria-expanded", "true");
+      setActive(Math.max(0, sel.selectedIndex), true);
+      openSel = close;
+    }
+    function close() {
+      wrap.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+      btn.removeAttribute("aria-activedescendant");
+      if (openSel === close) openSel = null;
+    }
+    function choose(i) {
+      var o = sel.options[i];
+      if (!o || o.disabled) return;
+      var changed = sel.selectedIndex !== i;
+      sel.selectedIndex = i;
+      sync(); close(); btn.focus();
+      if (changed) { sel.dispatchEvent(new Event("input", { bubbles: true })); sel.dispatchEvent(new Event("change", { bubbles: true })); }
+    }
+
+    btn.addEventListener("click", function () { if (wrap.classList.contains("is-open")) close(); else open(); });
+    btn.addEventListener("keydown", function (e) {
+      var isOpen = wrap.classList.contains("is-open"), k = e.key, n = sel.options.length;
+      if (!isOpen) {
+        if (k === "ArrowDown" || k === "ArrowUp" || k === "Enter" || k === " ") { e.preventDefault(); open(); }
+        else if (k === "Home" || k === "End") { e.preventDefault(); open(); setActive(k === "Home" ? 0 : n - 1, true); }
+        else if (k.length === 1 && /\S/.test(k)) { open(); }
+        else return;
+        if (!(k.length === 1 && /\S/.test(k))) return;
+      }
+      if (k === "ArrowDown") { e.preventDefault(); setActive(active + 1, true); }
+      else if (k === "ArrowUp") { e.preventDefault(); if (e.altKey) choose(active); else setActive(active - 1, true); }
+      else if (k === "Home" || k === "PageUp") { e.preventDefault(); setActive(0, true); }
+      else if (k === "End" || k === "PageDown") { e.preventDefault(); setActive(n - 1, true); }
+      else if (k === "Enter" || k === " ") { e.preventDefault(); choose(active); }
+      else if (k === "Escape") { e.preventDefault(); close(); }
+      else if (k === "Tab") { close(); }
+      else if (k.length === 1 && /\S/.test(k)) {
+        // type-ahead: jump to the next option starting with the typed letters
+        var now = Date.now(); typed = (now - typedAt > 700 ? "" : typed) + k.toLowerCase(); typedAt = now;
+        var all = opts(), start = typed.length > 1 ? active : active + 1;
+        for (var j = 0; j < n; j++) { var x = (start + j) % n; if (all[x].textContent.trim().toLowerCase().indexOf(typed) === 0) { setActive(x, true); break; } }
+      }
+    });
+    list.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    list.addEventListener("click", function (e) { var li = e.target.closest("[role=option]"); if (li) choose(+li.dataset.i); });
+    list.addEventListener("mousemove", function (e) { var li = e.target.closest("[role=option]"); if (li && +li.dataset.i !== active) setActive(+li.dataset.i); });
+    document.addEventListener("click", function (e) { if (!wrap.contains(e.target)) close(); });
+    btn.addEventListener("blur", function () { setTimeout(function () { if (!wrap.contains(document.activeElement)) close(); }, 0); });
+    sel.addEventListener("change", sync);
+    new MutationObserver(render).observe(sel, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["disabled"] });
+    if (sel.form) sel.form.addEventListener("reset", function () { setTimeout(sync, 0); });
+    sel._tlpSync = sync;
+    render();
+  }
+  function enhanceSelects(root) { qsa(".field select", root).forEach(enhanceSelect); }
+  TLP.refreshSelects = function () { qsa(".select-native").forEach(function (s) { if (s._tlpSync) s._tlpSync(); }); };
+
   renderChrome();
   arts();
   bindConfig();
@@ -526,6 +652,8 @@
   initChat();
   grain();
   loader();
+  header = qs("#site-header");
+  enhanceSelects();
   document.addEventListener("DOMContentLoaded", function () { observe(); });
   if (document.readyState !== "loading") observe();
 })();
