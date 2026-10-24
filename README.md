@@ -77,6 +77,10 @@ That also writes `assets/js/scenes.js`, the gold plot outline drawn on top of ea
 
 **Using your own drone photos:** add `image: "assets/img/properties/your-photo.jpg"` to a listing in `assets/js/data.js` and it replaces the render on the card and property page. To change a hero image, replace the matching file in `assets/img/scenes/` (keep a 16:10 photo with sky in the top third, where the headline sits).
 
+## After editing CSS or JS
+
+Every page links its files with a version, e.g. `assets/js/data.js?v=20261024c`. When you change any CSS or JS file, bump that version on all pages (one find-and-replace) so visitors' browsers load the new files instead of an old cached copy.
+
 ## Project structure
 
 ```
