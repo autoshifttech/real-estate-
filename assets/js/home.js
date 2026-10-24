@@ -245,22 +245,60 @@
     // cursor (e.g. after arrow-key navigation) must not steal the selection
     var last = null, canHover = window.matchMedia && window.matchMedia("(hover: hover)").matches;
     list.addEventListener("pointermove", function (e) {
-      if (!canHover || e.pointerType !== "mouse") return;
+      if (!canHover || e.pointerType !== "mouse" || pinned()) return;
       if (last && last[0] === e.screenX && last[1] === e.screenY) return;
       last = [e.screenX, e.screenY];
       var b = e.target.closest(".region-btn");
       if (b && b.getAttribute("aria-selected") !== "true") select(b.dataset.id);
     });
     btns.forEach(function (b, i) {
-      b.addEventListener("click", function () { select(b.dataset.id); });
+      b.addEventListener("click", function () { if (pinned()) goTo(i); select(b.dataset.id); });
       b.addEventListener("keydown", function (e) {
         var k = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
         if (!k) return;
         e.preventDefault();
-        select(btns[(i + k + btns.length) % btns.length].dataset.id, true);
+        var j = (i + k + btns.length) % btns.length;
+        if (pinned()) goTo(j);
+        select(btns[j].dataset.id, true);
       });
     });
     select(R[0].id);
+
+    /* Scroll-driven: the block pins under the header and the regions open one by one as you scroll.
+       The track is as tall as the pinned block plus one "step" of scrolling per region. */
+    var track = qs("#regions-track"), sticky = qs(".regions", track), raf = 0, current = 0;
+    function pinned() { return !!track && !U.reduced(); }
+    function stickyTop() { return parseFloat(getComputedStyle(sticky).top) || 0; }
+    function step() { return window.innerHeight * (window.innerWidth < 900 ? 0.5 : 0.42); }
+    function layout() {
+      track.classList.toggle("is-pinned", pinned());
+      track.style.height = pinned() ? sticky.offsetHeight + R.length * step() + "px" : "";
+    }
+    function range() { return Math.max(1, track.offsetHeight - sticky.offsetHeight); }
+    function goTo(i) {
+      var top = track.getBoundingClientRect().top + window.scrollY - stickyTop();
+      window.scrollTo({ top: top + (i + 0.08) / R.length * range(), behavior: U.reduced() ? "auto" : "smooth" });
+    }
+    function onScroll() {
+      raf = 0;
+      if (!pinned()) return;
+      var p = clamp((stickyTop() - track.getBoundingClientRect().top) / range(), 0, 0.9999);
+      var i = Math.floor(p * R.length), local = p * R.length - i;
+      if (i !== current) {
+        current = i;
+        select(R[i].id);
+        // keep the active pill in view on phones
+        var b = btns[i];
+        if (list.scrollWidth > list.clientWidth) list.scrollTo({ left: b.offsetLeft - list.clientWidth / 2 + b.offsetWidth / 2, behavior: "smooth" });
+      }
+      btns.forEach(function (b, k) { b.style.setProperty("--p", k < i ? 1 : k === i ? local.toFixed(3) : 0); });
+    }
+    if (track) {
+      layout(); onScroll();
+      window.addEventListener("scroll", function () { if (!raf) raf = requestAnimationFrame(onScroll); }, { passive: true });
+      window.addEventListener("resize", function () { layout(); onScroll(); });
+      window.addEventListener("load", function () { layout(); onScroll(); });
+    }
   }
 
   /* ---------- categories ---------- */
