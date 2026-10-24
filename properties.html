@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Properties — Tenkasi Land Promoters</title>
+  <meta name="description" content="Browse residential plots, farm land, hill estates and commercial land in Tenkasi, Tirunelveli, Virudhunagar, Thoothukudi, Kodaikanal, Ooty and Kerala.">
+  <meta name="theme-color" content="#F3F3F3">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <meta property="og:title" content="Properties — Tenkasi Land Promoters">
+  <meta property="og:image" content="assets/img/og.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+Tamil:wght@400;500&display=swap">
+  <link rel="stylesheet" href="assets/css/art.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body data-page="properties">
+  <main id="main">
+    <header class="page-head">
+      <div class="art-band" data-art="plains" data-seed="14" aria-hidden="true"></div>
+      <div class="wrap">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">Properties</span></nav>
+        <p class="eyebrow">Properties</p>
+        <h1 class="display">Find your ground</h1>
+        <p class="lead">Plots, farm land, hill estates and commercial land across seven regions. Every listing is walked, filmed and checked by our team.</p>
+      </div>
+    </header>
+
+    <div class="filters">
+      <form class="wrap filters-inner" role="search" aria-label="Filter properties" onsubmit="return false">
+        <div class="chips" id="region-chips" role="group" aria-label="Region"></div>
+        <div class="filter-controls">
+          <div class="field search"><label class="sr-only" for="f-q">Search</label><input id="f-q" type="search" placeholder="Search by name or place" autocomplete="off"></div>
+          <div class="field"><label class="sr-only" for="f-type">Property type</label><select id="f-type"></select></div>
+          <div class="field"><label class="sr-only" for="f-budget">Budget</label><select id="f-budget"></select></div>
+          <div class="field"><label class="sr-only" for="f-sort">Sort by</label><select id="f-sort"><option value="featured">Featured first</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></div>
+        </div>
+      </form>
+    </div>
+
+    <section class="wrap pad-bottom" aria-labelledby="h-results">
+      <h2 class="sr-only" id="h-results">Results</h2>
+      <div class="results-bar">
+        <p id="results-count" aria-live="polite"></p>
+        <button class="btn-clear" id="f-clear" type="button">Clear filters</button>
+      </div>
+      <div class="grid-cards" id="results"></div>
+      <div class="empty" id="empty" hidden>
+        <h2>Nothing matches yet</h2>
+        <p>New land comes in every week. Tell us what you need and we'll message you when it does.</p>
+        <div class="actions">
+          <button class="btn btn-light" type="button" data-clear>Clear filters</button>
+          <a class="btn btn-primary" href="#" data-href="whatsapp" data-text="Hi! I'm looking for land. Here's what I need:" target="_blank" rel="noopener">Tell us on WhatsApp</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--dark">
+      <div class="wrap section-head section-head--flush">
+        <div>
+          <p class="eyebrow">Off-market land</p>
+          <h2 class="title">Not every property makes it <em>online</em></h2>
+        </div>
+        <div class="actions-row">
+          <a class="btn btn-primary" href="contact.html#enquiry">Book a site visit</a>
+          <a class="btn btn-ghost" href="#" data-href="whatsapp" data-text="Hi! Do you have any land that isn't listed on the website?" target="_blank" rel="noopener">Ask on WhatsApp</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/art.js"></script>
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/listings.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Property — Tenkasi Land Promoters</title>
+  <meta name="description" content="Property details, plot layout, location and site-visit booking.">
+  <meta name="theme-color" content="#F3F3F3">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <meta property="og:image" content="assets/img/og.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+Tamil:wght@400;500&display=swap">
+  <link rel="stylesheet" href="assets/css/art.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body data-page="properties">
+  <main id="main">
+    <div id="prop-found">
+      <section class="prop-hero grain" id="prop-hero" aria-label="Property overview"><div class="wrap"></div></section>
+      <div class="spec-bar"><div class="wrap"><dl id="spec-bar"></dl></div></div>
+
+      <section class="section">
+        <div class="wrap prop-layout">
+          <div class="prop-main" id="prop-main"></div>
+          <aside class="prop-aside" id="enquire" aria-labelledby="aside-title">
+            <form class="form-card" id="prop-form" novalidate>
+              <div class="aside-price" id="aside-price"></div>
+              <h3 id="aside-title">Book a site visit</h3>
+              <p>We'll confirm a time on WhatsApp and send the location pin.</p>
+              <div class="form-grid">
+                <div class="field field--full"><label for="pf-name">Name</label><input id="pf-name" name="name" autocomplete="name" required><span class="err" aria-live="polite"></span></div>
+                <div class="field field--full"><label for="pf-phone">Phone</label><input id="pf-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required><span class="err" aria-live="polite"></span></div>
+                <div class="field field--full"><label for="pf-date">Preferred visit date</label><input id="pf-date" name="date" type="date"></div>
+                <div class="field field--full" id="pf-plot-field"><label for="pf-plot">Plot</label><input id="pf-plot" name="plot" placeholder="Choose a plot on the layout" readonly></div>
+                <div class="field field--full"><label for="pf-msg">Message</label><textarea id="pf-msg" name="message" placeholder="Anything we should know?"></textarea></div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary btn-block" type="submit">Send enquiry</button>
+                <p class="form-status" role="status"></p>
+              </div>
+              <div class="aside-quick" id="aside-quick"></div>
+            </form>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section section--white" id="similar-wrap" aria-labelledby="h-similar">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">You may also like</p>
+              <h2 class="title" id="h-similar">Similar <em>properties</em></h2>
+            </div>
+            <a class="link-arrow" href="properties.html"><span>All properties</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <div class="rail" id="similar"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="notfound" id="prop-missing" hidden>
+      <div>
+        <p class="eyebrow">Not found</p>
+        <h1 class="display">This land has moved on</h1>
+        <p>The property you're looking for isn't listed any more. It may have been sold.</p>
+        <div class="actions-row"><a class="btn btn-primary" href="properties.html">Browse properties</a><a class="btn btn-light" href="contact.html#enquiry">Tell us what you need</a></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/art.js"></script>
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/property.js"></script>
+</body>
+</html>

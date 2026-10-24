@@ -1,0 +1,202 @@
+/*
+ * Art palette — colours for the generated SVG landscapes (assets/js/art.js).
+ * Every colour is a registered custom property so switching dawn ⇄ dusk cross-fades.
+ */
+@property --p-sky0 { syntax: "<color>"; inherits: true; initial-value: #e7e2da; }
+@property --p-sky1 { syntax: "<color>"; inherits: true; initial-value: #f1e3cf; }
+@property --p-sky2 { syntax: "<color>"; inherits: true; initial-value: #f6d6ad; }
+@property --p-sun { syntax: "<color>"; inherits: true; initial-value: #fff3dc; }
+@property --p-cloud { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --p-haze { syntax: "<color>"; inherits: true; initial-value: #efe5d8; }
+@property --p-l1 { syntax: "<color>"; inherits: true; initial-value: #cbc6c0; }
+@property --p-l2 { syntax: "<color>"; inherits: true; initial-value: #aeb0a4; }
+@property --p-l3 { syntax: "<color>"; inherits: true; initial-value: #87917d; }
+@property --p-l4 { syntax: "<color>"; inherits: true; initial-value: #66735d; }
+@property --p-g1 { syntax: "<color>"; inherits: true; initial-value: #a5aa82; }
+@property --p-g2 { syntax: "<color>"; inherits: true; initial-value: #7b8462; }
+@property --p-crop { syntax: "<color>"; inherits: true; initial-value: #b9b878; }
+@property --p-crop2 { syntax: "<color>"; inherits: true; initial-value: #93a06c; }
+@property --p-dry { syntax: "<color>"; inherits: true; initial-value: #c3b48c; }
+@property --p-soil { syntax: "<color>"; inherits: true; initial-value: #b8805b; }
+@property --p-water { syntax: "<color>"; inherits: true; initial-value: #d6dcd6; }
+@property --p-water2 { syntax: "<color>"; inherits: true; initial-value: #93a7a4; }
+@property --p-sand { syntax: "<color>"; inherits: true; initial-value: #d8c7a6; }
+@property --p-salt { syntax: "<color>"; inherits: true; initial-value: #f1ebe2; }
+@property --p-tea { syntax: "<color>"; inherits: true; initial-value: #7f9a5e; }
+@property --p-ink { syntax: "<color>"; inherits: true; initial-value: #2f3628; }
+@property --p-mid { syntax: "<color>"; inherits: true; initial-value: #4f5a44; }
+@property --p-far { syntax: "<color>"; inherits: true; initial-value: #7d8670; }
+@property --p-paper { syntax: "<color>"; inherits: true; initial-value: #ededed; }
+@property --p-grid { syntax: "<color>"; inherits: true; initial-value: #cfc6b8; }
+@property --p-site { syntax: "<color>"; inherits: true; initial-value: #e3dcd1; }
+@property --p-plot { syntax: "<color>"; inherits: true; initial-value: #f5f1ea; }
+@property --p-line { syntax: "<color>"; inherits: true; initial-value: #b9ae9e; }
+@property --p-road { syntax: "<color>"; inherits: true; initial-value: #d4ccbf; }
+@property --p-park { syntax: "<color>"; inherits: true; initial-value: #c9cdb3; }
+@property --p-wall { syntax: "<color>"; inherits: true; initial-value: #fbf8f3; }
+@property --p-wall2 { syntax: "<color>"; inherits: true; initial-value: #ddd5c9; }
+@property --p-roof { syntax: "<color>"; inherits: true; initial-value: #f3eee6; }
+@property --p-win { syntax: "<color>"; inherits: true; initial-value: #8b8f8c; }
+@property --p-canopy { syntax: "<color>"; inherits: true; initial-value: #9aa287; }
+@property --p-shadow { syntax: "<color>"; inherits: true; initial-value: rgba(60, 50, 30, 0.12); }
+
+.art-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* dawn (default) */
+  --p-sky0: #e3e0da; --p-sky1: #efe2cf; --p-sky2: #f5d4a8; --p-sun: #fff4de; --p-cloud: #ffffff; --p-haze: #efe4d5;
+  --p-l1: #cdc7bf; --p-l2: #b1b1a4; --p-l3: #8b9480; --p-l4: #68755f;
+  --p-g1: #a9ad86; --p-g2: #7c8563; --p-crop: #bdbb7c; --p-crop2: #96a26e; --p-dry: #c8b78f; --p-soil: #bb8460;
+  --p-water: #dfe1d9; --p-water2: #98aaa6; --p-sand: #dcc9a6; --p-salt: #f3ede4; --p-tea: #86a062;
+  --p-ink: #2d3427; --p-mid: #4c5842; --p-far: #858c76;
+  --p-paper: #ededed; --p-grid: #d2d2d2; --p-site: #e5e5e5; --p-plot: #fafafa; --p-line: #b4b4b4; --p-road: #dadada;
+  --p-park: #cfd3c6; --p-wall: #ffffff; --p-wall2: #dcdcdc; --p-roof: #f3f3f3; --p-win: #8a8a8a; --p-canopy: #a3aa98;
+  --p-shadow: rgba(0, 0, 0, 0.1);
+  transition: --p-sky0 1s ease, --p-sky1 1s ease, --p-sky2 1s ease, --p-sun 1s ease, --p-cloud 1s ease, --p-haze 1s ease,
+    --p-l1 1s ease, --p-l2 1s ease, --p-l3 1s ease, --p-l4 1s ease, --p-g1 1s ease, --p-g2 1s ease, --p-crop 1s ease,
+    --p-crop2 1s ease, --p-dry 1s ease, --p-soil 1s ease, --p-water 1s ease, --p-water2 1s ease, --p-sand 1s ease,
+    --p-salt 1s ease, --p-tea 1s ease, --p-ink 1s ease, --p-mid 1s ease, --p-far 1s ease, --p-paper 1s ease,
+    --p-grid 1s ease, --p-site 1s ease, --p-plot 1s ease, --p-line 1s ease, --p-road 1s ease, --p-park 1s ease,
+    --p-wall 1s ease, --p-wall2 1s ease, --p-roof 1s ease, --p-win 1s ease, --p-canopy 1s ease, --p-shadow 1s ease;
+}
+
+/* Hills: cooler, bluer, mistier */
+.art-svg.k-hills {
+  --p-sky0: #d9e0e2; --p-sky1: #e9e8e1; --p-sky2: #f3e3cc; --p-haze: #eef0ec;
+  --p-l1: #c4ccd0; --p-l2: #a7b5b8; --p-l3: #85999a; --p-l4: #627a72; --p-g2: #4e6447;
+  --p-ink: #263129; --p-mid: #3f5345; --p-far: #7d8f88;
+}
+/* Kerala: lush greens */
+.art-svg.k-river {
+  --p-l2: #a9b6a2; --p-l3: #7f9474; --p-g1: #8fa36c; --p-g2: #5d7448; --p-water: #e5e4da; --p-water2: #8ea29c;
+  --p-ink: #25301f; --p-mid: #3b4a31; --p-far: #73836a;
+}
+/* Coast: sunrise over the sea */
+.art-svg.k-coast {
+  --p-sky0: #dfe0dd; --p-sky1: #f1e2cb; --p-sky2: #f7cf9f; --p-water: #e8dccb; --p-water2: #9fb1b0; --p-g2: #a99a78;
+}
+.art-svg.k-plains, .art-svg.k-highway { --p-g1: #c2b88f; --p-g2: #9a9670; --p-l1: #b9b9b0; }
+
+/* Dusk */
+.t-dusk .art-svg {
+  --p-sky0: #1d2232; --p-sky1: #57475c; --p-sky2: #e0956a; --p-sun: #ffd7a6; --p-cloud: #f3b590; --p-haze: #b7806f;
+  --p-l1: #6b5a69; --p-l2: #51495c; --p-l3: #3d3a4b; --p-l4: #2c2c39;
+  --p-g1: #3f3d3e; --p-g2: #29292e; --p-crop: #4a4741; --p-crop2: #3a3b38; --p-dry: #514840; --p-soil: #6b4a40;
+  --p-water: #d39a78; --p-water2: #3b3a49; --p-sand: #6c5650; --p-salt: #a98a83; --p-tea: #3a4237;
+  --p-ink: #13141a; --p-mid: #1f2028; --p-far: #3c3a46;
+  --p-paper: #1b1b1b; --p-grid: #2e2e2e; --p-site: #222222; --p-plot: #2a2a2a; --p-line: #474747; --p-road: #313131;
+  --p-park: #26302a; --p-wall: #cfcfcf; --p-wall2: #8f8f8f; --p-roof: #b3b3b3; --p-win: #ffcf7a; --p-canopy: #34403a;
+  --p-shadow: rgba(0, 0, 0, 0.35);
+}
+.t-dusk .art-svg.k-hills { --p-sky0: #1b2233; --p-sky1: #4f4a63; --p-sky2: #d98f72; --p-l1: #635c70; --p-l2: #4b4a60; --p-l3: #383a4d; --p-l4: #2a2e3b; --p-haze: #9d7b80; }
+.t-dusk .art-svg.k-river, .t-dusk .art-svg.k-coast, .t-dusk .art-svg.k-plains, .t-dusk .art-svg.k-highway {
+  --p-g1: #3f3d3e; --p-g2: #29292e; --p-l1: #6b5a69; --p-l2: #51495c; --p-l3: #3d3a4b; --p-water: #d39a78; --p-water2: #3b3a49;
+}
+
+/* gradient stops */
+.art-svg .s-sky0 { stop-color: var(--p-sky0); }
+.art-svg .s-sky1 { stop-color: var(--p-sky1); }
+.art-svg .s-sky2 { stop-color: var(--p-sky2); }
+.art-svg .s-sun { stop-color: var(--p-sun); }
+.art-svg .s-cloud { stop-color: var(--p-cloud); }
+.art-svg .s-haze { stop-color: var(--p-haze); }
+.art-svg .s-l1 { stop-color: var(--p-l1); }
+.art-svg .s-l2 { stop-color: var(--p-l2); }
+.art-svg .s-l3 { stop-color: var(--p-l3); }
+.art-svg .s-l4 { stop-color: var(--p-l4); }
+.art-svg .s-g1 { stop-color: var(--p-g1); }
+.art-svg .s-g2 { stop-color: var(--p-g2); }
+.art-svg .s-tea { stop-color: var(--p-tea); }
+.art-svg .s-water { stop-color: var(--p-water); }
+.art-svg .s-water2 { stop-color: var(--p-water2); }
+.art-svg .s-sand { stop-color: var(--p-sand); }
+.art-svg .s-fall { stop-color: #ffffff; }
+
+/* fills */
+.art-svg .f-sun { fill: var(--p-sun); }
+.art-svg .f-g1 { fill: var(--p-g1); }
+.art-svg .f-g2 { fill: var(--p-g2); }
+.art-svg .f-crop { fill: var(--p-crop); }
+.art-svg .f-crop2 { fill: var(--p-crop2); }
+.art-svg .f-dry { fill: var(--p-dry); }
+.art-svg .f-soil { fill: var(--p-soil); }
+.art-svg .f-salt { fill: var(--p-salt); opacity: 0.75; }
+.art-svg .f-l1 { fill: var(--p-far); }
+.art-svg .field { opacity: 0.55; }
+.art-svg .f-asphalt { fill: var(--p-mid); opacity: 0.85; }
+.art-svg .f-mark { fill: var(--p-salt); opacity: 0.8; }
+.art-svg .f-bldg { fill: var(--p-far); opacity: 0.8; }
+.art-svg .pan { stroke: var(--p-sand); stroke-width: 2; }
+
+.art-svg .bunds, .art-svg .furrows { fill: none; stroke: var(--p-g2); stroke-width: 1.2; opacity: 0.45; }
+.art-svg .birds { fill: none; stroke: var(--p-mid); stroke-width: 1.6; opacity: 0.55; }
+.art-svg .grass { fill: none; stroke: var(--p-ink); stroke-width: 2; stroke-linecap: round; }
+.art-svg .ripples { fill: none; stroke: var(--p-sky0); stroke-width: 1.5; opacity: 0.55; }
+.art-svg .glint { fill: none; stroke: var(--p-sun); stroke-width: 2; stroke-linecap: round; opacity: 0.85; }
+.art-svg .lane { fill: none; stroke: var(--p-salt); stroke-width: 2; opacity: 0.7; }
+.art-svg .poles { fill: none; stroke: var(--p-mid); stroke-width: 2; }
+.art-svg .tea-row { fill: none; stroke: var(--p-g2); opacity: 0.55; stroke-linecap: round; }
+.art-svg .slope { opacity: 1; }
+.art-svg .fall-shimmer { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 6 18; opacity: 0.8; animation: art-fall 1.2s linear infinite; }
+@keyframes art-fall { to { stroke-dashoffset: -24; } }
+
+/* silhouettes by depth */
+.art-svg .palm .trunk, .art-svg .palm .crown, .art-svg .palm circle,
+.art-svg .tree .trunk, .art-svg .tree .canopy, .art-svg .tree .canopy-path { fill: var(--p-mid); }
+.art-svg .palm .fronds { fill: none; stroke: var(--p-mid); stroke-linecap: round; }
+.art-svg .near .trunk, .art-svg .near .crown, .art-svg .near circle, .art-svg .near .canopy, .art-svg .near .canopy-path { fill: var(--p-ink); }
+.art-svg .near .fronds { stroke: var(--p-ink); }
+.art-svg .far .trunk, .art-svg .far .crown, .art-svg .far circle, .art-svg .far .canopy, .art-svg .far .canopy-path { fill: var(--p-far); }
+.art-svg .far .fronds { stroke: var(--p-far); }
+.art-svg .tree .canopy-lit { fill: var(--p-crop); opacity: 0.22; }
+.art-svg .turbine .tower, .art-svg .turbine .blade, .art-svg .turbine .hub { fill: var(--p-salt); stroke: var(--p-far); stroke-width: 0.6; opacity: 0.95; }
+.art-svg .turbine .blades { animation: art-spin 7s linear infinite; }
+@keyframes art-spin { to { transform: rotate(360deg); } }
+.art-svg .boundary-stone { fill: var(--p-salt); stroke: #e9b863; stroke-width: 2; }
+
+/* site plan */
+.art-svg .paper { fill: var(--p-paper); }
+.art-svg .grid { fill: none; stroke: var(--p-grid); stroke-width: 1; opacity: 0.7; }
+.art-svg .f-site { fill: var(--p-site); }
+.art-svg .f-road { fill: var(--p-road); }
+.art-svg .road-dash { fill: none; stroke: var(--p-plot); stroke-width: 2; stroke-dasharray: 14 12; }
+.art-svg .f-plot { fill: var(--p-plot); stroke: var(--p-line); stroke-width: 1.2; }
+.art-svg .f-park { fill: var(--p-park); }
+.art-svg .f-shadow { fill: var(--p-shadow); }
+.art-svg .f-wall { fill: var(--p-wall); stroke: var(--p-line); stroke-width: 0.8; }
+.art-svg .f-wall2 { fill: var(--p-wall2); stroke: var(--p-line); stroke-width: 0.8; }
+.art-svg .f-roof { fill: var(--p-roof); stroke: var(--p-line); stroke-width: 0.8; }
+.art-svg .f-parapet { fill: none; stroke: var(--p-line); stroke-width: 1; }
+.art-svg .f-win { fill: var(--p-win); opacity: 0.6; }
+.t-dusk .art-svg .f-win { opacity: 0.35; }
+.t-dusk .art-svg .f-win.lit { opacity: 1; }
+.art-svg .f-win.lit { opacity: 0.85; }
+.art-svg .f-trunk { stroke: var(--p-line); stroke-width: 3; }
+.art-svg .f-canopy { fill: var(--p-canopy); }
+.art-svg .f-canopy-lit { fill: var(--p-plot); opacity: 0.35; }
+.art-svg .f-goldfill { fill: #e7b65c; opacity: 0.16; }
+.art-svg .dim { fill: none; stroke: #b98d47; stroke-width: 1.4; stroke-dasharray: 4 4; }
+.art-svg .dim-t, .art-svg .pin-t, .art-svg .compass text, .art-svg .scalebar text {
+  font: 500 18px/1 "Inter", ui-sans-serif, system-ui, sans-serif; fill: #9e7b42;
+}
+.art-svg .pin-t { font: 600 22px/1 "Poppins", "Inter", ui-sans-serif, sans-serif; letter-spacing: -0.01em; fill: #1b1b1b; }
+.t-dusk .art-svg .pin-t { fill: #ffffff; }
+.art-svg .pin-line { stroke: #c79d58; stroke-width: 1.5; }
+.art-svg .pin-dot { fill: #f2cd85; }
+.art-svg .compass circle, .art-svg .compass path, .art-svg .scalebar path { fill: none; stroke: var(--p-line); stroke-width: 1.4; }
+.art-svg .compass path { fill: var(--p-line); }
+.art-svg .compass text, .art-svg .scalebar text { fill: var(--p-line); font-size: 15px; }
+
+/* the gold line */
+.art-svg .gold path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; }
+.art-svg .gold-halo { stroke: #e2a548; stroke-width: 22; opacity: 0.14; }
+.art-svg .gold-glow { stroke: #f0be62; stroke-width: 8; opacity: 0.45; }
+.art-svg .gold-core { stroke: #fff0c8; stroke-width: 2.6; }
+.art-svg .gold-spark { fill: #fff6dc; filter: drop-shadow(0 0 10px #ffcf6e) drop-shadow(0 0 24px #e9a443); opacity: 0; }
+.t-dusk .art-svg .gold-halo { opacity: 0.3; }
+.t-dusk .art-svg .gold-glow { opacity: 0.7; }
+
+@media (prefers-reduced-motion: reduce) {
+  .art-svg .turbine .blades, .art-svg .fall-shimmer { animation: none; }
+}
