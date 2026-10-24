@@ -1032,7 +1032,6 @@ a.contact-item:hover { border-color: var(--color-6); }
 .empty h2 { font-size: var(--text-2xl); line-height: var(--leading-snug); margin-bottom: var(--space-3); }
 .empty p { color: var(--color-2); }
 .empty .actions { display: flex; gap: var(--space-5); justify-content: center; flex-wrap: wrap; margin-top: var(--space-9); }
-@media (min-width: 760px) { .filters { position: sticky; top: calc(var(--header-h) + var(--space-3)); } }
 @media (max-width: 639px) { .filter-controls .field:not(.search) { flex: 1 1 calc(50% - var(--space-3)); } }
 
 /* ---------- property detail ---------- */
