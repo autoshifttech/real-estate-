@@ -769,6 +769,18 @@ ul { margin: 0; padding: 0; list-style: none; }
 .step:not(.is-lit) h3 { color: var(--color-2); }
 .step.is-lit { border-color: var(--color-1); box-shadow: var(--shadow-md); }
 .step.is-lit .num { color: var(--color-1); }
+/* hover: the card lifts, its dot grows with a ring, the heading darkens */
+.js .step[data-reveal].is-in {
+  transition: opacity var(--duration-reveal) var(--ease-out-expo), filter var(--duration-reveal) var(--ease-out-expo),
+    transform var(--duration-transform) var(--ease-standard), border-color var(--duration-transform) var(--ease-standard), box-shadow var(--duration-transform) var(--ease-standard);
+}
+.step-dot { transition: var(--transition-colors), box-shadow var(--duration-transform) var(--ease-standard), transform var(--duration-transform) var(--ease-standard); }
+@media (hover: hover) {
+  .js .step[data-reveal].is-in:hover, .step:hover { transform: translateY(calc(var(--space-2) * -1)); border-color: var(--color-1); box-shadow: var(--shadow-sm); }
+  .step:hover h3, .step:hover .num { color: var(--color-1); }
+  .step:hover .step-dot { transform: scale(1.35); background: var(--color-1); border-color: var(--color-1); box-shadow: 0 0 0 var(--space-2) var(--color-4); }
+}
+@media (prefers-reduced-motion: reduce) { .step:hover, .js .step[data-reveal].is-in:hover { transform: none; } }
 .step.is-lit .step-dot { background: var(--color-1); border-color: var(--color-1); box-shadow: 0 0 0 var(--space-2) var(--color-4); }
 .step .num { display: block; margin-bottom: var(--space-5); font-family: var(--font-display); font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--color-2); }
 .step h3 { font-size: var(--text-lg); line-height: var(--leading-snug); margin-bottom: var(--space-3); letter-spacing: -0.01em; }
