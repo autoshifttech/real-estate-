@@ -1130,6 +1130,19 @@ a.contact-item:hover { border-color: var(--color-6); }
 .value svg { width: var(--space-13); height: var(--space-13); padding: var(--space-4); border-radius: var(--radius-full); background: var(--color-1); color: var(--color-6); margin-bottom: var(--space-9); }
 .value h3 { font-size: var(--text-lg); line-height: var(--leading-snug); margin-bottom: var(--space-3); letter-spacing: -0.01em; }
 .value p { margin: 0; font-size: var(--text-sm); line-height: var(--leading-normal); color: var(--color-2); }
+/* hover: card lifts, icon grows and tilts, a line draws along the bottom */
+.value { position: relative; overflow: hidden; transition: transform var(--duration-transform) var(--ease-standard), border-color var(--duration-transform) var(--ease-standard), box-shadow var(--duration-transform) var(--ease-standard); }
+.js .value[data-reveal].is-in { transition: opacity var(--duration-reveal) var(--ease-out-expo), filter var(--duration-reveal) var(--ease-out-expo), transform var(--duration-transform) var(--ease-standard), border-color var(--duration-transform) var(--ease-standard), box-shadow var(--duration-transform) var(--ease-standard); }
+.value svg { transition: transform var(--duration-transform) var(--ease-standard); }
+.value h3 { transition: transform var(--duration-transform) var(--ease-standard); }
+.value::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--color-1); transform: scaleX(0); transform-origin: left; transition: transform var(--duration-reveal) var(--ease-out-expo); }
+@media (hover: hover) {
+  .value:hover, .js .value[data-reveal].is-in:hover { transform: translateY(calc(var(--space-3) * -1)); border-color: var(--color-1); box-shadow: var(--shadow-sm); }
+  .value:hover svg { transform: scale(1.12) rotate(-8deg); }
+  .value:hover h3 { transform: translateX(var(--space-2)); }
+  .value:hover::after { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) { .value:hover, .js .value[data-reveal].is-in:hover, .value:hover svg, .value:hover h3 { transform: none; } }
 @media (max-width: 1079px) { .values { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 559px) { .values { grid-template-columns: 1fr; } .value { padding: var(--space-9); } }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-13); align-items: center; }
