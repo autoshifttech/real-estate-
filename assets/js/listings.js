@@ -38,7 +38,7 @@
     if (state.type && p.type !== state.type) return false;
     if (state.budget) {
       var b = DATA.budgets.filter(function (x) { return x.id === state.budget; })[0];
-      if (b && (p.price < b.min || p.price >= b.max)) return false;
+      if (b && (p.price < b.min || (b.max != null && p.price >= b.max))) return false;
     }
     if (state.q) {
       var r = U.region(p.region), hay = [p.title, p.location, p.summary, r && r.name, r && r.ta].join(" ").toLowerCase();

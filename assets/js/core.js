@@ -470,6 +470,13 @@
       if (data.message) lines.push("Message: " + data.message);
       var text = lines.join("\n");
 
+      // save the enquiry for the admin inbox (works on the live site; the WhatsApp step below still runs)
+      if (/^https?:$/.test(window.location.protocol)) {
+        var rec = { intent: intent, property: ctx.property || "", page: window.location.pathname };
+        ["name", "phone", "plot", "region", "type", "budget", "area", "date", "message", "website"].forEach(function (k) { if (data[k]) rec[k] = data[k]; });
+        try { fetch("/api/enquiry", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) }).catch(function () {}); } catch (e) { /* inbox is optional */ }
+      }
+
       function show(msg, isErr) {
         if (!status) return;
         status.textContent = msg; status.classList.add("is-shown"); status.classList.toggle("is-error", !!isErr);
