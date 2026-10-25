@@ -72,6 +72,7 @@
     video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>',
     doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 14l2 2 4-4"/></svg>',
     users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>',
+    area: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
     route: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/></svg>',
     help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>',
     mark: '<svg class="brand-mark" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M2 25 L12 11 L17 17.5 L23.5 7 L38 25"/><path pathLength="1" d="M7 31 L20 27 L33 31 L20 35 Z"/></svg>'
@@ -397,20 +398,26 @@
 
   var STATUS = { available: "Available", few: "Few plots left", sold: "Sold out" };
   TLP.card = function (p) {
-    var t = type(p.type), url = "property.html?id=" + encodeURIComponent(p.id);
+    var t = type(p.type), r = region(p.region), url = "property.html?id=" + encodeURIComponent(p.id);
     var kind = t ? t.label.replace(/s$/, "") : "Property";
+    var unit = p.priceNote === "onwards" ? "onwards" : "total price";
+    var facts = [
+      ["area", p.area],
+      ["doc", p.approval.split(" · ")[0]],
+      ["route", p.road]
+    ];
     return '<article class="card' + (p.status === "sold" ? " card--sold" : "") + '">' +
-      '<div class="card-media">' + art(p, { decorative: true }) + "</div>" +
-      '<div class="card-top"><span class="card-pills"><span class="pill-status is-' + esc(p.status) + '">' + I.check + esc(STATUS[p.status] || "Available") + "</span><span>" + esc(p.approval.split(" · ")[0]) + "</span></span>" +
+      '<div class="card-media">' + art(p, { decorative: true }) +
+      '<span class="card-status is-' + esc(p.status) + '">' + esc(STATUS[p.status] || "Available") + "</span>" +
+      '<span class="card-kind">' + esc(kind) + "</span>" +
       '<button class="card-share" type="button" data-share="' + esc(url) + '" data-title="' + esc(p.title) + '" aria-label="Share ' + esc(p.title) + '">' + I.share + "</button></div>" +
       '<div class="card-body">' +
+      '<p class="card-loc">' + I.pin + esc(p.location) + "</p>" +
       '<h3 class="card-title"><a href="' + url + '">' + esc(p.title) + "</a></h3>" +
-      '<p class="card-sub">' + esc(kind) + " in " + esc(p.location) + "</p>" +
-      '<div class="card-chips"><span>' + formatPrice(p.price) + (p.priceNote === "onwards" ? "+" : "") + '</span><span>' + esc(p.area) + "</span></div>" +
-      '<p class="card-line"><b>' + esc(STATUS[p.status] || "Available") + ":</b> " + esc(p.road) + (p.facing ? " · " + esc(p.facing) : "") + "</p>" +
-      '<p class="card-desc">' + esc(p.summary) + "</p>" +
-      '<div class="card-actions"><a class="btn btn-light" href="' + url + '">View details</a>' +
-      '<a class="btn btn-ghost" href="' + waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener">' + I.whatsapp + "WhatsApp</a></div>" +
+      '<ul class="card-facts">' + facts.map(function (f) { return "<li>" + I[f[0]] + "<span>" + esc(f[1]) + "</span></li>"; }).join("") + "</ul>" +
+      '<div class="card-foot"><p class="card-price">' + formatPrice(p.price) + "<small>" + unit + "</small></p>" +
+      '<div class="card-actions"><a class="card-wa" href="' + waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener" aria-label="WhatsApp about ' + esc(p.title) + '">' + I.whatsapp + "</a>" +
+      '<span class="card-go" aria-hidden="true">View' + I.arrow + "</span></div></div>" +
       "</div></article>";
   };
 
