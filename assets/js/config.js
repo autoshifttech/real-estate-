@@ -24,7 +24,7 @@ window.TLP_CONFIG = {
   threads: "https://www.threads.net/@tenkasi_land_promoters",
 
   stats: {
-    followers: "300K+",
+    followers: "3L+",
     videos: "1,350+",
     regions: "7"
   },

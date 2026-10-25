@@ -492,7 +492,7 @@ window.TLP_DATA = {
     },
     {
       q: "I want to sell my land. How do you help?",
-      a: "Send us the location and documents. We visit, shoot a video walkthrough and share it with our community of over 300,000 people on Instagram and YouTube."
+      a: "Send us the location and documents. We visit, shoot a video walkthrough and share it with our community of over 3 lakh people on Instagram and YouTube."
     }
   ]
 };
