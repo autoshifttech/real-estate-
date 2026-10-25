@@ -97,6 +97,12 @@ Sign in at **`https://<your-site>.vercel.app/admin/`** with a username and passw
 
 Edits are a **draft** until you press **Publish to website**. Publishing saves one commit to GitHub and Vercel puts it live in about a minute. Photos are saved when you upload them and appear once you publish.
 
+### Demo mode (before the backend is connected)
+
+Until the settings below are added, `/admin/` runs in **demo mode**: sign in with the demo account you were given, and everything you publish (properties, photos, settings, regions, FAQs) is saved **in that browser only**, and the website shows those changes in that same browser, with a "Demo preview" label and a Reset button. Website enquiries sent from that browser appear in the demo inbox. Other visitors always see the normal site, so demo sign-ins can't change the live website. The demo password is stored only as a SHA-256 hash in `admin/admin.js`. Reset the demo from **Settings → Demo data**.
+
+Demo mode switches off by itself as soon as the real backend is configured.
+
 ### One-time setup
 
 1. **Create a GitHub token** — github.com → your picture → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.

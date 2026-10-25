@@ -52,6 +52,7 @@ body.admin { background: var(--color-5); min-height: 100vh; }
 .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: var(--space-7); flex-wrap: wrap;
   padding: var(--space-7) var(--space-12); background: rgb(var(--color-5-rgb) / 0.9); -webkit-backdrop-filter: blur(var(--space-5)); backdrop-filter: blur(var(--space-5)); border-bottom: 1px solid var(--border); }
 .topbar h1 { font-size: var(--text-lg); line-height: var(--leading-snug); }
+.topbar-gap { flex: 1; }
 .publish { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
 .publish-state { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--color-1); }
 .publish-state::before { content: ""; width: var(--space-3); height: var(--space-3); border-radius: var(--radius-full); background: #2f9e5b; }

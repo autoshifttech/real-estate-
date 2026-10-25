@@ -33,7 +33,7 @@
   function typeLabel(id) { var t = S.data.types.filter(function (x) { return x.id === id; })[0]; return t ? t.label : id; }
   var STATUS = { available: "Available", few: "Few left", sold: "Sold out" };
   function imgFor(p) {
-    if (p.image) return S.previews[p.image] || "../" + p.image;
+    if (p.image) return S.previews[p.image] || (p.image.indexOf("data:") === 0 ? p.image : "../" + p.image);
     return "../assets/img/scenes/" + (p.scene || "plots") + ".webp";
   }
 
@@ -83,7 +83,75 @@
     });
   }
 
+  /* ---------- demo mode ----------
+   * Used while the real admin is not set up (no Vercel settings yet): sign in with the demo
+   * account and every change is kept in THIS browser only (localStorage), where the public site
+   * also picks it up — enough to present the site to a client. Nothing reaches other visitors.
+   * The demo password is stored only as a SHA-256 hash.
+   */
+  var DEMO = { on: false, user: "admin", hash: "7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358", key: "tlp-demo-content", enq: "tlp-demo-enquiries" };
+  var SCENES = ["plots", "plots-b", "plots-close", "house", "ghats", "farm", "farm-b", "mango", "river", "coast", "plains", "highway", "hills", "tea"];
+  function sha256(text) {
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) { return ("0" + x.toString(16)).slice(-2); }).join("");
+    });
+  }
+  function readJsPayload(url, name) {
+    return fetch(url, { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) {
+      var m = "window." + name + " =", i = t.indexOf(m);
+      return JSON.parse(t.slice(i + m.length, t.lastIndexOf(";")));
+    });
+  }
+  function lsGet(k, fallback) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); }
+    catch (e) { throw new Error("This browser's demo storage is full. Remove some uploaded photos or reset the demo in Settings."); }
+  }
+  function demoApi(action, body) {
+    var wait = function (v) { return new Promise(function (r) { setTimeout(function () { r(v); }, 250); }); };
+    if (action === "login") {
+      return sha256(body.password || "").then(function (h) {
+        if (body.username !== DEMO.user || h !== DEMO.hash) return new Promise(function (_, rej) { setTimeout(function () { rej(new Error("Wrong username or password")); }, 700); });
+        try { sessionStorage.setItem("tlp-demo-auth", "1"); } catch (e) { /* session only */ }
+        return { ok: true, user: DEMO.user };
+      });
+    }
+    if (action === "logout") { try { sessionStorage.removeItem("tlp-demo-auth"); } catch (e) {} return wait({ ok: true }); }
+    if (action === "content") {
+      var saved = lsGet(DEMO.key, {});
+      return Promise.all([
+        saved.config ? saved.config : readJsPayload("../assets/js/config.js", "TLP_CONFIG"),
+        saved.data ? saved.data : readJsPayload("../assets/js/data.js", "TLP_DATA")
+      ]).then(function (r) { return { ok: true, config: r[0], data: r[1], shas: {}, scenes: SCENES }; });
+    }
+    if (action === "publish") {
+      var cur = lsGet(DEMO.key, {});
+      if (body.config) cur.config = body.config;
+      if (body.data) cur.data = body.data;
+      try { lsSet(DEMO.key, cur); } catch (e) { return Promise.reject(e); }
+      return wait({ ok: true, shas: {} });
+    }
+    if (action === "upload") return wait({ ok: true, path: body.dataUrl });   // the photo itself is kept in the demo content
+    if (action === "enquiries") return wait({ ok: true, items: lsGet(DEMO.enq, []) });
+    if (action === "enquiry") {
+      var items = lsGet(DEMO.enq, []);
+      items = body.delete ? items.filter(function (x) { return x.id !== body.id; }) : items.map(function (x) { if (x.id === body.id && body.status) x.status = body.status; return x; });
+      lsSet(DEMO.enq, items);
+      return wait({ ok: true });
+    }
+    return Promise.reject(new Error("Not available in demo mode"));
+  }
+  function startDemo() {
+    DEMO.on = true;
+    var signed = false;
+    try { signed = sessionStorage.getItem("tlp-demo-auth") === "1"; } catch (e) {}
+    if (!signed) return renderLogin();
+    S.user = DEMO.user;
+    return loadContent().then(renderShell);
+  }
+
   function api(action, body) {
+    if (DEMO.on) return demoApi(action, body);
     var opts = { method: body ? "POST" : "GET", credentials: "same-origin", headers: { Accept: "application/json" } };
     if (body) { opts.headers["Content-Type"] = "application/json"; opts.headers["X-TLP-Admin"] = "1"; opts.body = JSON.stringify(body); }
     return fetch("/api/admin?a=" + action, opts).then(function (r) {
@@ -98,11 +166,11 @@
   /* ---------- start ---------- */
   function boot() {
     fetch("/api/admin?a=status", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (st) {
-      if (!st.configured) return renderSetup(st.problems || []);
+      if (!st.configured) return startDemo();
       if (!st.user) return renderLogin();
       S.user = st.user;
       return loadContent().then(renderShell);
-    }).catch(function () { renderSetup(["The admin API is not reachable. It runs on Vercel (folder /api) — open the admin on your vercel.app address, not as a local file."]); });
+    }).catch(function () { startDemo(); });
   }
 
   function loadContent() {
@@ -128,6 +196,7 @@
   function renderLogin(msg) {
     app.innerHTML = '<main class="auth"><div class="auth-card"><a class="brand" href="../index.html">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
       "<h1>Sign in</h1><p>Manage properties, enquiries and website content.</p>" +
+      (DEMO.on ? '<p class="alert is-info" style="margin-top:var(--space-7)"><b>Demo mode.</b> Changes are saved in this browser only, for previewing the site. Live saving starts once the database is connected.</p>' : "") +
       '<form id="login" novalidate>' + (msg ? '<p class="alert is-info">' + esc(msg) + "</p>" : "") +
       '<div class="field"><label for="u">Username</label><input id="u" name="username" autocomplete="username" required></div>' +
       '<div class="field"><label for="p">Password</label><div class="pw-wrap"><input id="p" name="password" type="password" autocomplete="current-password" required><button type="button" class="pw-toggle" aria-pressed="false">Show</button></div></div>' +
@@ -163,7 +232,7 @@
     app.innerHTML = '<div class="shell"><aside class="side"><a class="brand" href="../index.html" target="_blank" rel="noopener">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
       '<nav aria-label="Admin">' + NAV.map(function (n) { return '<button type="button" data-view="' + n[0] + '">' + icon(n[2]) + n[1] + (n[0] === "enquiries" ? '<span class="count" id="new-count" hidden></span>' : "") + "</button>"; }).join("") + "</nav>" +
       '<div class="side-foot"><p class="who">Signed in as <b>' + esc(S.user) + '</b></p><a href="../index.html" target="_blank" rel="noopener">' + icon("ext") + '<span>View website</span></a><button type="button" id="logout">' + icon("out") + "<span>Sign out</span></button></div></aside>" +
-      '<div class="main"><header class="topbar"><h1 id="title"></h1><div class="publish" id="publish"></div></header><main class="content" id="view"></main></div></div>';
+      '<div class="main"><header class="topbar"><h1 id="title"></h1>' + (DEMO.on ? '<span class="pill is-few" title="Changes are saved in this browser only">Demo mode · this browser only</span>' : "") + '<span class="topbar-gap"></span><div class="publish" id="publish"></div></header><main class="content" id="view"></main></div></div>';
     $$(".side nav [data-view]").forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.view); }); });
     $("#logout").addEventListener("click", function () {
       var leave = function () { api("logout", {}).then(function () { S.user = null; renderLogin("You have signed out."); }); };
@@ -208,8 +277,8 @@
     btn.disabled = true; btn.classList.add("is-loading");
     api("publish", { config: S.dirty.config ? S.config : undefined, data: S.dirty.data ? S.data : undefined, shas: S.shas }).then(function (d) {
       S.shas = d.shas; S.dirty = { config: false, data: false };
-      renderPublish("Published · the website updates in about a minute");
-      toast("Published. The website will show the changes in about a minute.");
+      renderPublish(DEMO.on ? "Published in this browser (demo)" : "Published · the website updates in about a minute");
+      toast(DEMO.on ? "Published. Open the website in this browser to see it." : "Published. The website will show the changes in about a minute.");
     }).catch(function (e) {
       btn.disabled = false; btn.classList.remove("is-loading");
       if (e.status === 409) {
@@ -510,12 +579,12 @@
       if (file.size > 25 * 1024 * 1024) return reject(new Error("That photo is larger than 25 MB."));
       var img = new Image(), url = URL.createObjectURL(file);
       img.onload = function () {
-        var max = 2000, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+        var max = DEMO.on ? 1280 : 2000, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
         var c = document.createElement("canvas");
         c.width = Math.round(w * k); c.height = Math.round(h * k);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
-        var out = c.toDataURL("image/webp", 0.82);
+        var out = c.toDataURL("image/webp", DEMO.on ? 0.72 : 0.82);
         if (out.indexOf("data:image/webp") !== 0) out = c.toDataURL("image/jpeg", 0.85);
         resolve(out);
       };
@@ -689,7 +758,17 @@
       f("address", "Office address", "") + f("mapQuery", "Map location", "What Google Maps should search for, e.g. Tenkasi, Tamil Nadu") + "</div></section>" +
       '<section class="panel"><h2>Brand</h2><div class="grid-2">' + f("name", "Business name") + f("shortName", "Short name", "Big word in the logo and footer") + f("tagline", "Tagline", "Small text under the logo") + f("taglineTamil", "Tamil tagline") + "</div></section>" +
       '<section class="panel"><h2>Social links</h2><div class="grid-3">' + f("instagram", "Instagram", "https://…", "url") + f("youtube", "YouTube", "https://…", "url") + f("threads", "Threads", "https://…", "url") + "</div></section>" +
+      (DEMO.on ? '<section class="panel"><h2>Demo data</h2><p class="hint">Demo changes and enquiries are kept in this browser. Reset to go back to the original website content.</p><button class="btn btn-danger btn-sm" id="demo-reset">Reset demo</button></section>' : "") +
       '<section class="panel"><h2>Numbers on the website</h2><div class="grid-3">' + f("stats.followers", "Followers", "e.g. 3L+") + f("stats.videos", "Posts & videos", "e.g. 1,350+") + f("stats.regions", "Regions", "e.g. 7") + "</div></section>";
+    var dr = $("#demo-reset", v);
+    if (dr) dr.addEventListener("click", function () {
+      confirmBox("Reset the demo?", "All demo changes, uploaded photos and demo enquiries in this browser will be removed.", "Reset", true).then(function (ok) {
+        if (!ok) return;
+        try { localStorage.removeItem(DEMO.key); localStorage.removeItem(DEMO.enq); } catch (e) {}
+        S.enquiries = null;
+        loadContent().then(function () { go("settings"); toast("Demo reset to the original content"); });
+      });
+    });
     $$("[data-p]", v).forEach(function (inp) {
       inp.addEventListener("input", function () {
         var parts = inp.dataset.p.split(".");

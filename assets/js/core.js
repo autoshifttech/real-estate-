@@ -474,7 +474,18 @@
       if (/^https?:$/.test(window.location.protocol)) {
         var rec = { intent: intent, property: ctx.property || "", page: window.location.pathname };
         ["name", "phone", "plot", "region", "type", "budget", "area", "date", "message", "website"].forEach(function (k) { if (data[k]) rec[k] = data[k]; });
-        try { fetch("/api/enquiry", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) }).catch(function () {}); } catch (e) { /* inbox is optional */ }
+        // when the backend is not set up yet (demo), keep the enquiry in this browser for the demo inbox
+        var keepLocal = function () {
+          try {
+            var now = new Date(), list = JSON.parse(window.localStorage.getItem("tlp-demo-enquiries") || "[]");
+            list.unshift(Object.assign({ id: now.toISOString().slice(0, 7) + "-" + now.getTime().toString(36), at: now.toISOString(), status: "new" }, rec));
+            window.localStorage.setItem("tlp-demo-enquiries", JSON.stringify(list.slice(0, 200)));
+          } catch (e) { /* storage unavailable */ }
+        };
+        try {
+          fetch("/api/enquiry", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) })
+            .then(function (r) { if (r.status === 503 || r.status === 404) keepLocal(); }, keepLocal);
+        } catch (e) { keepLocal(); }
       }
 
       function show(msg, isErr) {
@@ -659,7 +670,18 @@
   function enhanceSelects(root) { qsa(".field select", root).forEach(enhanceSelect); }
   TLP.refreshSelects = function () { qsa(".select-native").forEach(function (s) { if (s._tlpSync) s._tlpSync(); }); };
 
+  /* label shown while this browser is previewing demo changes from the admin panel */
+  function demoBadge() {
+    if (!window.TLP_DEMO) return;
+    document.body.insertAdjacentHTML("beforeend", '<div class="demo-badge" role="status"><span>Demo preview · changes saved in this browser</span><button type="button">Reset</button></div>');
+    qs(".demo-badge button").addEventListener("click", function () {
+      try { window.localStorage.removeItem("tlp-demo-content"); } catch (e) {}
+      window.location.reload();
+    });
+  }
+
   renderChrome();
+  demoBadge();
   arts();
   bindConfig();
   initHeader();
