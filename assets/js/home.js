@@ -382,18 +382,44 @@
       return "<details><summary>" + esc(f.q) + "<i aria-hidden=\"true\"></i></summary><p>" + esc(f.a) + "</p></details>";
     }).join("");
 
-    // accordion: only one answer open at a time; with a mouse, hovering a question opens it
-    var items = qsa("details", host), timer = 0;
+    // accordion: only one answer open at a time; with a mouse, hovering a question opens it.
+    // Opening and closing animate the height so answers slide instead of jumping.
+    var items = qsa("details", host), timer = 0, last = null;
     var canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
-    function openOnly(d) { items.forEach(function (o) { if (o !== d && o.open) o.open = false; }); if (!d.open) d.open = true; }
+    function isOpen(d) { return d._target != null ? d._target : d.open; }
+    function animate(d, open) {
+      if (isOpen(d) === open) return;
+      d._target = open;
+      if (U.reduced() || !d.animate) { d.open = open; d._target = null; return; }
+      var summary = qs("summary", d), answer = qs("p", d);
+      var from = d.getBoundingClientRect().height;
+      if (d._anim) d._anim.cancel();
+      if (open) d.open = true;
+      var border = d.offsetHeight - d.clientHeight;
+      var to = open ? d.scrollHeight + border : summary.offsetHeight + border;
+      d.style.overflow = "hidden";
+      d._anim = d.animate({ height: [from + "px", to + "px"] }, { duration: open ? 380 : 300, easing: "cubic-bezier(0.4, 0, 0.2, 1)" });
+      if (answer) answer.animate({ opacity: open ? [0, 1] : [1, 0], transform: open ? ["translateY(-6px)", "none"] : ["none", "translateY(-6px)"] }, { duration: open ? 380 : 200, easing: "ease-out", fill: "both" });
+      d._anim.onfinish = function () {
+        if (!open) d.open = false;
+        d.style.overflow = ""; d._anim = null; d._target = null;
+      };
+    }
+    function openOnly(d) { items.forEach(function (o) { if (o !== d) animate(o, false); }); animate(d, true); }
     items.forEach(function (d) {
-      d.addEventListener("toggle", function () { if (d.open) items.forEach(function (o) { if (o !== d) o.open = false; }); });
-      d.addEventListener("mouseenter", function () {
-        if (!canHover.matches) return;
-        clearTimeout(timer);
-        timer = setTimeout(function () { openOnly(d); }, 140);   // short delay so passing the pointer over doesn't flicker
+      qs("summary", d).addEventListener("click", function (e) {
+        e.preventDefault();
+        if (isOpen(d)) animate(d, false); else openOnly(d);
       });
-      d.addEventListener("mouseleave", function () { clearTimeout(timer); });
+      // real pointer movement only: scrolling the page under a resting mouse must not open answers
+      d.addEventListener("pointermove", function (e) {
+        if (!canHover.matches || e.pointerType !== "mouse" || isOpen(d) || d._pending) return;
+        if (last && last[0] === e.screenX && last[1] === e.screenY) return;
+        last = [e.screenX, e.screenY];
+        clearTimeout(timer); d._pending = true;
+        timer = setTimeout(function () { d._pending = false; openOnly(d); }, 140);   // short delay so passing over doesn't flicker
+      });
+      d.addEventListener("mouseleave", function () { clearTimeout(timer); d._pending = false; });
     });
   }
 
