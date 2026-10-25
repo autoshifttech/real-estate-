@@ -79,6 +79,15 @@
   };
   TLP.icons = I;
 
+  var SOCIAL_NAMES = { instagram: "Instagram", youtube: "YouTube", facebook: "Facebook", x: "X (Twitter)", linkedin: "LinkedIn", telegram: "Telegram", pinterest: "Pinterest", whatsapp: "WhatsApp channel", threads: "Threads", website: "Website" };
+  I.s_facebook = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4a21 21 0 0 0-2.3-.1c-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21z"/></svg>';
+  I.s_x = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.8 3.5h3l-6.6 7.5 7.8 9.5h-6.1l-4.8-5.9-5.4 5.9H2.6l7-7.9L2.2 3.5h6.2l4.3 5.4zm-1 15.2h1.7L7.3 5.2H5.5z"/></svg>';
+  I.s_linkedin = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.9 8.8H3.7V20h3.2zM5.3 3.5a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8zM20.3 13.6c0-3-1.6-5-4.3-5-1.4 0-2.4.8-2.8 1.5V8.8H10V20h3.2v-5.6c0-1.5.3-2.9 2.1-2.9s1.8 1.7 1.8 3V20h3.2z"/></svg>';
+  I.s_telegram = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M21 4L3 11l6 2.2L18 7l-7 7.5V20l3.3-3.7L18 19z"/></svg>';
+  I.s_pinterest = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.2 2.5C6.9 2.5 4.2 6.2 4.2 9.3c0 1.9.7 3.5 2.2 4.1.3.1.5 0 .6-.3l.2-.9c.1-.3 0-.4-.2-.7a3.9 3.9 0 0 1-.9-2.7c0-3.5 2.6-6.6 6.8-6.6 3.7 0 5.7 2.3 5.7 5.3 0 4-1.8 7.4-4.4 7.4-1.4 0-2.5-1.2-2.2-2.6.4-1.8 1.2-3.7 1.2-4.9 0-1.1-.6-2.1-1.9-2.1-1.5 0-2.7 1.5-2.7 3.6 0 1.3.4 2.2.4 2.2l-1.8 7.5c-.5 2.2-.1 4.9 0 5.2 0 .1.2.2.3.1.1-.2 1.6-2 2.1-3.9l.8-3.2c.4.8 1.6 1.4 2.9 1.4 3.8 0 6.4-3.5 6.4-8.1 0-3.5-3-6.8-7.5-6.8z"/></svg>';
+  I.s_website = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z"/></svg>';
+  I.s_whatsapp = I.whatsapp;
+
   /* ---------- header, menu, footer, chat ---------- */
 
   /* The main menu: four dropdowns and a plain Contact link. */
@@ -192,6 +201,10 @@
       '<a class="icon-btn" href="' + esc(CFG.youtube) + '" target="_blank" rel="noopener" aria-label="YouTube">' + I.youtube + "</a>" +
       '<a class="icon-btn" href="' + esc(CFG.threads) + '" target="_blank" rel="noopener" aria-label="Threads">' + I.threads + "</a>" +
       '<a class="icon-btn" href="' + waLink() + '" target="_blank" rel="noopener" aria-label="WhatsApp">' + I.whatsapp + "</a>" +
+      (CFG.socials || []).filter(function (s) { return /^https:\/\//.test(s.url || ""); }).map(function (s) {
+        var name = s.label || SOCIAL_NAMES[s.platform] || "Website";
+        return '<a class="icon-btn" href="' + esc(s.url) + '" target="_blank" rel="noopener" aria-label="' + esc(name) + '" title="' + esc(name) + '">' + (I["s_" + s.platform] || I[s.platform] || I.s_website) + "</a>";
+      }).join("") +
       "</div></div>" +
       '<div class="footer-col"><h2>Explore</h2><ul>' +
       '<li><a href="properties.html">All properties</a></li><li><a href="properties.html?type=plot">Residential plots</a></li>' +

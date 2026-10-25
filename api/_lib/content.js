@@ -16,6 +16,7 @@ const HEADERS = {
 const SCENES = ["plots", "plots-b", "plots-close", "house", "ghats", "farm", "farm-b", "mango", "river", "coast", "plains", "highway", "hills", "tea"];
 const ART_KINDS = ["plan", "ghats", "farm", "hills", "river", "coast", "plains", "highway"];
 const STATUSES = ["available", "few", "sold"];
+const SOCIALS = ["instagram", "youtube", "facebook", "x", "linkedin", "telegram", "pinterest", "whatsapp", "threads", "website"];
 
 function bad(msg) { return Object.assign(new Error(msg), { status: 400 }); }
 
@@ -85,6 +86,17 @@ function cleanConfig(c) {
     instagram: url(c.instagram, "Instagram link"),
     youtube: url(c.youtube, "YouTube link"),
     threads: url(c.threads, "Threads link"),
+    socials: list(c.socials, "More accounts", 12).map(function (x, i) {
+      x = x || {};
+      const f = "Account " + (i + 1);
+      const platform = SOCIALS.indexOf(x.platform) >= 0 ? x.platform : "website";
+      const link = url(x.url, f + " link");
+      if (!link) throw bad(f + ": add the link or remove the account");
+      const out = { platform, url: link };
+      const label = str(x.label, 40, f + " name");
+      if (label) out.label = label;
+      return out;
+    }),
     stats: {
       followers: str(stats.followers, 20, "Followers"),
       videos: str(stats.videos, 20, "Videos"),

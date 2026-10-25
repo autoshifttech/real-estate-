@@ -757,9 +757,36 @@
       f("email", "Email", "", "email") + f("hours", "Opening hours", "e.g. Every day, 9:00 AM – 7:00 PM") +
       f("address", "Office address", "") + f("mapQuery", "Map location", "What Google Maps should search for, e.g. Tenkasi, Tamil Nadu") + "</div></section>" +
       '<section class="panel"><h2>Brand</h2><div class="grid-2">' + f("name", "Business name") + f("shortName", "Short name", "Big word in the logo and footer") + f("tagline", "Tagline", "Small text under the logo") + f("taglineTamil", "Tamil tagline") + "</div></section>" +
-      '<section class="panel"><h2>Social links</h2><div class="grid-3">' + f("instagram", "Instagram", "https://…", "url") + f("youtube", "YouTube", "https://…", "url") + f("threads", "Threads", "https://…", "url") + "</div></section>" +
+      '<section class="panel"><h2>Social links</h2><p class="hint">Main accounts, shown in the menu and footer.</p><div class="grid-3">' + f("instagram", "Instagram", "https://…", "url") + f("youtube", "YouTube", "https://…", "url") + f("threads", "Threads", "https://…", "url") + "</div>" +
+      '<h3 class="sub-h">More accounts</h3><p class="hint">Extra pages or a second account. Each one appears as an icon in the website footer.</p><div class="rows" id="socials"></div>' +
+      '<button class="btn btn-light btn-sm add-row" id="social-add" style="margin-top:var(--space-5)">' + icon("plus") + "Add account</button></section>" +
       (DEMO.on ? '<section class="panel"><h2>Demo data</h2><p class="hint">Demo changes and enquiries are kept in this browser. Reset to go back to the original website content.</p><button class="btn btn-danger btn-sm" id="demo-reset">Reset demo</button></section>' : "") +
       '<section class="panel"><h2>Numbers on the website</h2><div class="grid-3">' + f("stats.followers", "Followers", "e.g. 3L+") + f("stats.videos", "Posts & videos", "e.g. 1,350+") + f("stats.regions", "Regions", "e.g. 7") + "</div></section>";
+    // more social accounts
+    C.socials = C.socials || [];
+    var PLATFORMS = [["instagram", "Instagram"], ["youtube", "YouTube"], ["facebook", "Facebook"], ["x", "X (Twitter)"], ["linkedin", "LinkedIn"], ["telegram", "Telegram"], ["pinterest", "Pinterest"], ["whatsapp", "WhatsApp channel"], ["threads", "Threads"], ["website", "Other website"]];
+    var sbox = $("#socials", v);
+    function drawSocials() {
+      sbox.innerHTML = C.socials.map(function (s, i) {
+        return '<div class="row-edit acct-row" data-i="' + i + '">' +
+          '<select aria-label="Platform for account ' + (i + 1) + '" data-k="platform">' + PLATFORMS.map(function (p) { return '<option value="' + p[0] + '"' + (s.platform === p[0] ? " selected" : "") + ">" + p[1] + "</option>"; }).join("") + "</select>" +
+          '<input aria-label="Link for account ' + (i + 1) + '" data-k="url" type="url" placeholder="https://…" value="' + esc(s.url) + '">' +
+          '<input aria-label="Name for account ' + (i + 1) + '" data-k="label" maxlength="40" placeholder="Name (optional), e.g. Rentals page" value="' + esc(s.label || "") + '">' +
+          '<button class="icon-only" data-del aria-label="Remove account ' + (i + 1) + '">' + icon("trash") + "</button></div>";
+      }).join("") || '<p class="muted" style="margin:0;font-size:var(--text-sm)">No extra accounts yet.</p>';
+      $$(".acct-row", sbox).forEach(function (row) {
+        var i = +row.dataset.i;
+        $$("[data-k]", row).forEach(function (el) { el.addEventListener(el.tagName === "SELECT" ? "change" : "input", function () { C.socials[i][el.dataset.k] = el.value; markDirty("config"); }); });
+        $("[data-del]", row).addEventListener("click", function () { C.socials.splice(i, 1); markDirty("config"); drawSocials(); });
+      });
+      $("#social-add", v).disabled = C.socials.length >= 12;
+    }
+    $("#social-add", v).addEventListener("click", function () {
+      C.socials.push({ platform: "instagram", url: "", label: "" }); markDirty("config"); drawSocials();
+      var rows = $$(".acct-row", sbox); $('[data-k="url"]', rows[rows.length - 1]).focus();
+    });
+    drawSocials();
+
     var dr = $("#demo-reset", v);
     if (dr) dr.addEventListener("click", function () {
       confirmBox("Reset the demo?", "All demo changes, uploaded photos and demo enquiries in this browser will be removed.", "Reset", true).then(function (ok) {

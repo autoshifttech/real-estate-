@@ -209,3 +209,8 @@ body.admin { background: var(--color-5); min-height: 100vh; }
 
 /* hint lines that sit directly on the grey page background need the darker text colour */
 .content > .muted { color: var(--color-1); }
+
+.sub-h { margin: var(--space-9) 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.acct-row { grid-template-columns: 180px minmax(0, 2fr) minmax(0, 1.2fr) auto; }
+.acct-row select { min-height: var(--space-13); padding: 0 var(--space-7); border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--color-6); }
+@media (max-width: 860px) { .acct-row { grid-template-columns: 1fr auto; } .acct-row select, .acct-row input { grid-column: 1; } .acct-row [data-del] { grid-column: 2; grid-row: 1; } }
