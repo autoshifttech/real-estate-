@@ -105,7 +105,7 @@
   function lsGet(k, fallback) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
   function lsSet(k, v) {
     try { localStorage.setItem(k, JSON.stringify(v)); }
-    catch (e) { throw new Error("This browser's demo storage is full. Remove some uploaded photos or reset the demo in Settings."); }
+    catch (e) { throw new Error("Storage is full. Remove some uploaded photos and try again."); }
   }
   function demoApi(action, body) {
     var wait = function (v) { return new Promise(function (r) { setTimeout(function () { r(v); }, 250); }); };
@@ -139,7 +139,7 @@
       lsSet(DEMO.enq, items);
       return wait({ ok: true });
     }
-    return Promise.reject(new Error("Not available in demo mode"));
+    return Promise.reject(new Error("This action is not available yet"));
   }
   function startDemo() {
     DEMO.on = true;
@@ -196,7 +196,6 @@
   function renderLogin(msg) {
     app.innerHTML = '<main class="auth"><div class="auth-card"><a class="brand" href="../index.html">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
       "<h1>Sign in</h1><p>Manage properties, enquiries and website content.</p>" +
-      (DEMO.on ? '<p class="alert is-info" style="margin-top:var(--space-7)"><b>Demo mode.</b> Changes are saved in this browser only, for previewing the site. Live saving starts once the database is connected.</p>' : "") +
       '<form id="login" novalidate>' + (msg ? '<p class="alert is-info">' + esc(msg) + "</p>" : "") +
       '<div class="field"><label for="u">Username</label><input id="u" name="username" autocomplete="username" required></div>' +
       '<div class="field"><label for="p">Password</label><div class="pw-wrap"><input id="p" name="password" type="password" autocomplete="current-password" required><button type="button" class="pw-toggle" aria-pressed="false">Show</button></div></div>' +
@@ -229,11 +228,24 @@
   var TITLES = { dashboard: "Dashboard", properties: "Properties", enquiries: "Enquiries", regions: "Regions", content: "Steps & FAQs", settings: "Site settings", editor: "Edit property" };
 
   function renderShell() {
-    app.innerHTML = '<div class="shell"><aside class="side"><a class="brand" href="../index.html" target="_blank" rel="noopener">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
+    app.innerHTML = '<div class="shell"><div class="mbar"><button type="button" class="mbar-menu" aria-label="Open menu" aria-expanded="false" aria-controls="side">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>' +
+      '<span class="mbar-title" id="mtitle"></span><a class="mbar-site" href="../index.html" target="_blank" rel="noopener" aria-label="View website">' + icon("ext") + "</a></div>" +
+      '<div class="side-back" hidden></div><aside class="side" id="side"><a class="brand" href="../index.html" target="_blank" rel="noopener">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
       '<nav aria-label="Admin">' + NAV.map(function (n) { return '<button type="button" data-view="' + n[0] + '">' + icon(n[2]) + n[1] + (n[0] === "enquiries" ? '<span class="count" id="new-count" hidden></span>' : "") + "</button>"; }).join("") + "</nav>" +
       '<div class="side-foot"><p class="who">Signed in as <b>' + esc(S.user) + '</b></p><a href="../index.html" target="_blank" rel="noopener">' + icon("ext") + '<span>View website</span></a><button type="button" id="logout">' + icon("out") + "<span>Sign out</span></button></div></aside>" +
-      '<div class="main"><header class="topbar"><h1 id="title"></h1>' + (DEMO.on ? '<span class="pill is-few" title="Changes are saved in this browser only">Demo mode · this browser only</span>' : "") + '<span class="topbar-gap"></span><div class="publish" id="publish"></div></header><main class="content" id="view"></main></div></div>';
-    $$(".side nav [data-view]").forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.view); }); });
+      '<div class="main"><header class="topbar"><h1 id="title"></h1><span class="topbar-gap"></span><div class="publish" id="publish"></div></header><main class="content" id="view"></main></div></div>';
+    var menuBtn = $(".mbar-menu"), back = $(".side-back");
+    function drawer(open) {
+      app.querySelector(".shell").classList.toggle("is-menu", open);
+      menuBtn.setAttribute("aria-expanded", String(open)); menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      back.hidden = !open;
+      document.documentElement.style.overflow = open ? "hidden" : "";
+      if (open) { var cur = $('.side nav [aria-current="page"]') || $(".side nav button"); cur.focus(); } else menuBtn.focus();
+    }
+    menuBtn.addEventListener("click", function () { drawer(!app.querySelector(".shell").classList.contains("is-menu")); });
+    back.addEventListener("click", function () { drawer(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && app.querySelector(".shell.is-menu")) drawer(false); });
+    $$(".side nav [data-view]").forEach(function (b) { b.addEventListener("click", function () { if (app.querySelector(".shell.is-menu")) { app.querySelector(".shell").classList.remove("is-menu"); back.hidden = true; menuBtn.setAttribute("aria-expanded", "false"); document.documentElement.style.overflow = ""; } go(b.dataset.view); }); });
     $("#logout").addEventListener("click", function () {
       var leave = function () { api("logout", {}).then(function () { S.user = null; renderLogin("You have signed out."); }); };
       if (isDirty()) confirmBox("Sign out?", "You have unpublished changes. They will be lost.", "Sign out", true).then(function (ok) { if (ok) leave(); });
@@ -247,6 +259,7 @@
     S.view = view;
     $$(".side nav [data-view]").forEach(function (b) { if (b.dataset.view === (view === "editor" ? "properties" : view)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     $("#title").textContent = TITLES[view] || "";
+    $("#mtitle").textContent = TITLES[view] || "";
     var v = $("#view");
     ({ dashboard: viewDashboard, properties: viewProperties, enquiries: viewEnquiries, regions: viewRegions, content: viewContent, settings: viewSettings, editor: viewEditor })[view](v);
     renderPublish();
@@ -277,8 +290,8 @@
     btn.disabled = true; btn.classList.add("is-loading");
     api("publish", { config: S.dirty.config ? S.config : undefined, data: S.dirty.data ? S.data : undefined, shas: S.shas }).then(function (d) {
       S.shas = d.shas; S.dirty = { config: false, data: false };
-      renderPublish(DEMO.on ? "Published in this browser (demo)" : "Published · the website updates in about a minute");
-      toast(DEMO.on ? "Published. Open the website in this browser to see it." : "Published. The website will show the changes in about a minute.");
+      renderPublish(DEMO.on ? "Published" : "Published · the website updates in about a minute");
+      toast(DEMO.on ? "Published. The website shows the changes now." : "Published. The website will show the changes in about a minute.");
     }).catch(function (e) {
       btn.disabled = false; btn.classList.remove("is-loading");
       if (e.status === 409) {
@@ -609,7 +622,7 @@
     v.innerHTML = '<div class="toolbar"><div class="tabs-row" role="group" aria-label="Show">' +
       [["new", "New"], ["contacted", "Contacted"], ["closed", "Closed"], ["all", "All"]].map(function (t) { return '<button class="tab-btn" data-tab="' + t[0] + '" aria-pressed="' + (S.enqTab === t[0]) + '">' + t[1] + "</button>"; }).join("") + "</div>" +
       '<input type="search" id="eq" placeholder="Search name, phone, property" aria-label="Search enquiries">' +
-      '<button class="btn btn-light btn-sm" id="e-refresh">' + icon("refresh") + 'Refresh</button><button class="btn btn-light btn-sm" id="e-csv">' + icon("download") + "Export CSV</button></div>" +
+      '<div class="toolbar-btns"><button class="btn btn-light btn-sm" id="e-refresh">' + icon("refresh") + 'Refresh</button><button class="btn btn-light btn-sm" id="e-csv">' + icon("download") + "Export CSV</button></div></div>" +
       '<div class="rows" id="elist"><p class="muted">Loading…</p></div>';
     var draw = function () {
       getEnquiries().then(function (items) {
@@ -760,7 +773,7 @@
       '<section class="panel"><h2>Social links</h2><p class="hint">Main accounts, shown in the menu and footer.</p><div class="grid-3">' + f("instagram", "Instagram", "https://…", "url") + f("youtube", "YouTube", "https://…", "url") + f("threads", "Threads", "https://…", "url") + "</div>" +
       '<h3 class="sub-h">More accounts</h3><p class="hint">Extra pages or a second account. Each one appears as an icon in the website footer.</p><div class="rows" id="socials"></div>' +
       '<button class="btn btn-light btn-sm add-row" id="social-add" style="margin-top:var(--space-5)">' + icon("plus") + "Add account</button></section>" +
-      (DEMO.on ? '<section class="panel"><h2>Demo data</h2><p class="hint">Demo changes and enquiries are kept in this browser. Reset to go back to the original website content.</p><button class="btn btn-danger btn-sm" id="demo-reset">Reset demo</button></section>' : "") +
+      (DEMO.on ? '<section class="panel"><h2>Restore original content</h2><p class="hint">Undo every published change and remove uploaded photos and enquiries.</p><button class="btn btn-danger btn-sm" id="demo-reset">Restore original</button></section>' : "") +
       '<section class="panel"><h2>Numbers on the website</h2><div class="grid-3">' + f("stats.followers", "Followers", "e.g. 3L+") + f("stats.videos", "Posts & videos", "e.g. 1,350+") + f("stats.regions", "Regions", "e.g. 7") + "</div></section>";
     // more social accounts
     C.socials = C.socials || [];
@@ -789,11 +802,11 @@
 
     var dr = $("#demo-reset", v);
     if (dr) dr.addEventListener("click", function () {
-      confirmBox("Reset the demo?", "All demo changes, uploaded photos and demo enquiries in this browser will be removed.", "Reset", true).then(function (ok) {
+      confirmBox("Restore the original content?", "All published changes, uploaded photos and enquiries will be removed.", "Restore", true).then(function (ok) {
         if (!ok) return;
         try { localStorage.removeItem(DEMO.key); localStorage.removeItem(DEMO.enq); } catch (e) {}
         S.enquiries = null;
-        loadContent().then(function () { go("settings"); toast("Demo reset to the original content"); });
+        loadContent().then(function () { go("settings"); toast("Original content restored"); });
       });
     });
     $$("[data-p]", v).forEach(function (inp) {

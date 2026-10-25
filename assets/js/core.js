@@ -497,7 +497,7 @@
         };
         try {
           fetch("/api/enquiry", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) })
-            .then(function (r) { if (r.status === 503 || r.status === 404) keepLocal(); }, keepLocal);
+            .then(function (r) { if ([404, 405, 501, 503].indexOf(r.status) >= 0) keepLocal(); }, keepLocal);
         } catch (e) { keepLocal(); }
       }
 
@@ -683,18 +683,7 @@
   function enhanceSelects(root) { qsa(".field select", root).forEach(enhanceSelect); }
   TLP.refreshSelects = function () { qsa(".select-native").forEach(function (s) { if (s._tlpSync) s._tlpSync(); }); };
 
-  /* label shown while this browser is previewing demo changes from the admin panel */
-  function demoBadge() {
-    if (!window.TLP_DEMO) return;
-    document.body.insertAdjacentHTML("beforeend", '<div class="demo-badge" role="status"><span>Demo preview · changes saved in this browser</span><button type="button">Reset</button></div>');
-    qs(".demo-badge button").addEventListener("click", function () {
-      try { window.localStorage.removeItem("tlp-demo-content"); } catch (e) {}
-      window.location.reload();
-    });
-  }
-
   renderChrome();
-  demoBadge();
   arts();
   bindConfig();
   initHeader();
