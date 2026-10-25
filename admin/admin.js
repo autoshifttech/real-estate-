@@ -119,7 +119,7 @@
       '<ol class="setup-list">' +
       "<li>Open <b>vercel.com → your project → Settings → Environment Variables</b>.</li>" +
       "<li>Add <code>ADMIN_USERNAME</code> — the name you will sign in with.</li>" +
-      "<li>Add <code>ADMIN_PASSWORD</code> — at least 10 characters.</li>" +
+      "<li>Add <code>ADMIN_PASSWORD</code> — at least 8 characters.</li>" +
       "<li>Add <code>SESSION_SECRET</code> — a long random string (32+ characters). Never change it later: it also unlocks saved enquiries.</li>" +
       "<li>Add <code>GITHUB_TOKEN</code> — a GitHub fine-grained token for this repository with <b>Contents: Read and write</b>.</li>" +
       "<li>Go to <b>Deployments → ⋯ → Redeploy</b>, then reload this page.</li></ol></div></main>";

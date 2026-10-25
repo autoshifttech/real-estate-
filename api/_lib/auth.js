@@ -3,7 +3,7 @@
  * HttpOnly session cookie.
  *
  *   ADMIN_USERNAME   the admin username
- *   ADMIN_PASSWORD   the admin password (at least 10 characters)
+ *   ADMIN_PASSWORD   the admin password (at least 8 characters)
  *   SESSION_SECRET   long random string (at least 32 characters) used to sign sessions
  *                    and to encrypt enquiries — do not change it once enquiries exist
  */
@@ -21,7 +21,7 @@ function configError() {
   if (!process.env.ADMIN_PASSWORD) missing.push("ADMIN_PASSWORD");
   if (!process.env.SESSION_SECRET) missing.push("SESSION_SECRET");
   if (missing.length) return "Missing settings in Vercel: " + missing.join(", ");
-  if (process.env.ADMIN_PASSWORD.length < 10) return "ADMIN_PASSWORD must be at least 10 characters";
+  if (process.env.ADMIN_PASSWORD.length < 8) return "ADMIN_PASSWORD must be at least 8 characters";
   if (process.env.SESSION_SECRET.length < 32) return "SESSION_SECRET must be at least 32 characters";
   return null;
 }

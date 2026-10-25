@@ -106,7 +106,7 @@ Edits are a **draft** until you press **Publish to website**. Publishing saves o
    | Name | Value |
    |---|---|
    | `ADMIN_USERNAME` | the name you will sign in with |
-   | `ADMIN_PASSWORD` | a strong password, at least 10 characters |
+   | `ADMIN_PASSWORD` | at least 8 characters; the longer and less guessable, the safer |
    | `SESSION_SECRET` | a long random string, 32+ characters (e.g. from a password generator). **Never change it later** — it also unlocks saved enquiries |
    | `GITHUB_TOKEN` | the token from step 1 |
    | `GITHUB_BRANCH` | *optional* — the branch the site deploys from; defaults to the deployed branch |
@@ -117,12 +117,17 @@ To change the password, edit `ADMIN_PASSWORD` in Vercel and redeploy.
 
 ### How it is built and kept safe
 
+- The username and password live only in Vercel's settings, never in the code — this repository is public.
 - `api/admin.js` and `api/enquiry.js` are Vercel serverless functions (plain Node, no packages). Shared code is in `api/_lib/`.
 - Sign-in is checked on the server; the session is a signed, `HttpOnly`, `SameSite=Strict` cookie that lasts 12 hours. Repeated wrong passwords are slowed down and locked out for 15 minutes. Admin requests also need a custom header, which blocks cross-site requests.
 - Everything the admin sends is checked and rebuilt field by field on the server before it is saved (lengths, links must be `https://`, photo types are verified, ids are unique), so a typo can't break the site.
 - If two people edit at once, the second publish is stopped with "someone else changed it — reload" instead of overwriting.
 - **Enquiries contain names and phone numbers, and this repository is public**, so they are encrypted (AES-256-GCM) before saving, on a separate branch `admin-data` that Vercel does not deploy. Only the server, with `SESSION_SECRET`, can read them. Making the GitHub repository private is still recommended.
 - Website forms still open WhatsApp as before; the copy saved to the inbox is in addition.
+
+### Moving to Supabase later
+
+Storage sits behind one small interface in `api/_lib/store.js` (`read`, `list`, `commit`, `ensureBranch`), and enquiries behind `api/_lib/enquiries.js` (`add`, `all`, `update`). To switch to Supabase, add a Supabase adapter there (tables for properties, regions, FAQs, settings and enquiries, using a service-role key kept in a Vercel setting). The admin panel and the API actions stay the same.
 
 ### Try it locally
 
