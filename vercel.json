@@ -66,5 +66,12 @@
     "api/*.js": {
       "includeFiles": "assets/js/{config,data}.js"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/admin/",
+      "permanent": true
+    }
+  ]
 }
