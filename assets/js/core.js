@@ -225,12 +225,8 @@
       "<span>Prices and availability are indicative and may change. Please verify all documents before purchase.</span></div>" +
       "</div></footer>";
 
-    var chat =
-      '<div class="chat" id="chat"><div class="chat-panel" id="chat-panel" role="dialog" aria-label="Contact us">' +
-      "<h3>Talk to us</h3><p>Ask about a property, a video walkthrough or a site visit. We usually reply within the hour.</p>" +
-      '<a class="btn btn-primary" href="' + waLink("Hi! I'd like to know more about your properties.") + '" target="_blank" rel="noopener">' + I.whatsapp + "WhatsApp</a>" +
-      '<a class="btn btn-ghost" href="' + telLink() + '">' + I.phone + "Call " + esc(CFG.phone) + "</a></div>" +
-      '<button class="chat-btn" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Contact us">' + I.bubble + I.close + "</button></div>";
+    /* floating WhatsApp button: one tap opens the chat */
+    var chat = '<aside class="chat" id="chat" aria-label="WhatsApp"><a class="wa-float" href="' + waLink() + '" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp" title="Chat on WhatsApp">' + I.whatsapp + "</a></aside>";
 
     document.body.insertAdjacentHTML("afterbegin", header);
     document.body.insertAdjacentHTML("beforeend", footer + chat);
@@ -325,9 +321,8 @@
   }
 
   function initChat() {
-    var chat = qs("#chat");
-    if (!chat) return;
-    var btn = qs(".chat-btn", chat);
+    var chat = qs("#chat"), btn = chat && qs(".chat-btn", chat);
+    if (!btn) return;
     function set(open) { chat.classList.toggle("is-open", open); btn.setAttribute("aria-expanded", String(open)); btn.setAttribute("aria-label", open ? "Close contact options" : "Contact us"); }
     btn.addEventListener("click", function () { set(!chat.classList.contains("is-open")); });
     document.addEventListener("click", function (e) { if (!chat.contains(e.target)) set(false); });
