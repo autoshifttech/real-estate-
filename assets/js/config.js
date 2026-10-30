@@ -6,6 +6,7 @@ window.TLP_CONFIG = {
   "taglineTamil": "ஒரு கோடு. உங்கள் நிலம்.",
   "phone": "+91 00000 00000",
   "whatsapp": "910000000000",
+  "whatsappMessage": "Hi! I would like to know more about your properties.",
   "email": "hello@example.com",
   "address": "Tenkasi, Tamil Nadu, India",
   "mapQuery": "Tenkasi, Tamil Nadu",

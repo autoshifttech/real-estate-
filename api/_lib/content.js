@@ -92,6 +92,7 @@ function cleanConfig(c) {
     taglineTamil: str(c.taglineTamil, 120, "Tamil tagline"),
     phone: str(c.phone, 30, "Phone"),
     whatsapp,
+    whatsappMessage: str(c.whatsappMessage, 300, "WhatsApp first message"),
     email,
     address: str(c.address, 200, "Address"),
     mapQuery: str(c.mapQuery, 200, "Map location"),

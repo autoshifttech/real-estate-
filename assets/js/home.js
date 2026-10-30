@@ -74,10 +74,10 @@
     });
 
     // dots
-    dotsEl.innerHTML = scenes.map(function (s, i) {
+    if (dotsEl) dotsEl.innerHTML = scenes.map(function (s, i) {
       return '<button type="button" aria-label="Scene ' + (i + 1) + ": " + esc(s.name) + '"' + (i === 0 ? ' aria-current="true"' : "") + "></button>";
     }).join("");
-    var dots = qsa("button", dotsEl);
+    var dots = dotsEl ? qsa("button", dotsEl) : [];
 
     var unitPx = 1, top = 0, active = -1, raf = 0, ready = false;
     function measure() {
@@ -100,8 +100,8 @@
       if (countEl) countEl.textContent = String(i + 1).padStart(2, "0");
       if (nameEl) nameEl.textContent = "/ " + String(N).padStart(2, "0") + " · " + scenes[i].name;
       if (spec) spec.classList.toggle("is-active", i === N - 1);
-      prev.disabled = i === 0;
-      next.disabled = i === N - 1;
+      if (prev) prev.disabled = i === 0;
+      if (next) next.disabled = i === N - 1;
     }
 
     function frame() {
@@ -138,8 +138,8 @@
     }
     function request() { if (!raf) raf = requestAnimationFrame(frame); }
 
-    prev.addEventListener("click", function () { go(active - 1); });
-    next.addEventListener("click", function () { go(active + 1); });
+    if (prev) prev.addEventListener("click", function () { go(active - 1); });
+    if (next) next.addEventListener("click", function () { go(active + 1); });
     dots.forEach(function (d, i) { d.addEventListener("click", function () { go(i); }); });
     stage.addEventListener("keydown", function (e) {
       if (e.target.closest("input, select, textarea")) return;

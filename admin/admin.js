@@ -1030,8 +1030,12 @@
       var parts = path.split("."), val = parts.length > 1 ? C[parts[0]][parts[1]] : C[path];
       return '<div class="field"><label for="s-' + path.replace(".", "-") + '">' + esc(label) + '</label><input id="s-' + path.replace(".", "-") + '" data-p="' + path + '" type="' + (type || "text") + '" value="' + esc(val) + '">' + (hint ? "<small>" + esc(hint) + "</small>" : "") + "</div>";
     };
-    v.innerHTML = '<section class="panel"><h2>Contact</h2><p class="hint">Used in the header, footer, contact page, chat button and every enquiry form.</p><div class="grid-2">' +
-      f("phone", "Phone number", "Shown on the website, e.g. +91 98765 43210", "tel") + f("whatsapp", "WhatsApp number", "Country code + number, digits only, e.g. 919876543210", "tel") +
+    v.innerHTML = '<section class="panel wa-panel"><h2>' + icon("wa") + 'WhatsApp</h2><p class="hint">Every WhatsApp button on the website opens a chat with this number.</p><div class="grid-2">' +
+      '<div class="field"><label for="s-whatsapp">WhatsApp number</label><input id="s-whatsapp" data-p="whatsapp" type="tel" inputmode="tel" placeholder="+91 98765 43210" value="' + esc(C.whatsapp) + '"><small id="wa-check"></small></div>' +
+      '<div class="field"><label for="s-whatsappMessage">First message</label><textarea id="s-whatsappMessage" data-p="whatsappMessage" rows="3" maxlength="300" placeholder="Hi! I would like to know more about your properties.">' + esc(C.whatsappMessage || "") + '</textarea><small>Typed in for the customer when they open the chat. They can change it before sending. Property buttons add the property name.</small></div>' +
+      '</div><div class="quick" style="margin-top:var(--space-7)"><a class="btn btn-light btn-sm" id="wa-test" target="_blank" rel="noopener">' + icon("wa") + "Test the WhatsApp button</a></div></section>" +
+      '<section class="panel"><h2>Contact</h2><p class="hint">Used in the header, footer, contact page and chat button.</p><div class="grid-2">' +
+      f("phone", "Phone number", "Shown on the website, e.g. +91 98765 43210", "tel") +
       f("email", "Email", "", "email") + f("hours", "Opening hours", "e.g. Every day, 9:00 AM – 7:00 PM") +
       f("address", "Office address", "") + f("mapQuery", "Map location", "What Google Maps should search for, e.g. Tenkasi, Tamil Nadu") + "</div></section>" +
       '<section class="panel"><h2>Brand</h2><div class="grid-2">' + f("name", "Business name") + f("shortName", "Short name", "Big word in the logo and footer") + f("tagline", "Tagline", "Small text under the logo") + f("taglineTamil", "Tamil tagline") + "</div></section>" +
@@ -1078,10 +1082,26 @@
     $$("[data-p]", v).forEach(function (inp) {
       inp.addEventListener("input", function () {
         var parts = inp.dataset.p.split(".");
-        if (parts.length > 1) C[parts[0]][parts[1]] = inp.value; else C[parts[0]] = inp.value;
+        var val = parts[0] === "whatsapp" ? inp.value.replace(/\D/g, "") : inp.value;   // the site needs digits only
+        if (parts.length > 1) C[parts[0]][parts[1]] = val; else C[parts[0]] = val;
         markDirty("config");
+        if (parts[0] === "whatsapp" || parts[0] === "whatsappMessage") waCheck();
       });
     });
+    // WhatsApp: check the number and keep the test link current
+    function waCheck() {
+      var d = String(C.whatsapp || "").replace(/\D/g, ""), ok = d.length >= 11 && d.length <= 15 && !/^9?1?0+$/.test(d);
+      var note = $("#wa-check"), test = $("#wa-test");
+      if (!d || /^9?1?0+$/.test(d)) { note.textContent = "Not set yet: add your WhatsApp number with the country code."; note.className = "is-warn"; }
+      else if (d.length === 10) { note.textContent = "Add the country code in front, e.g. 91 " + d; note.className = "is-warn"; }
+      else if (!ok) { note.textContent = "That doesn't look like a full number with country code."; note.className = "is-warn"; }
+      else { note.textContent = "Opens chats with +" + d.replace(/^91(\d{5})(\d{5})$/, "91 $1 $2"); note.className = "is-ok"; }
+      test.href = "https://wa.me/" + d + (C.whatsappMessage ? "?text=" + encodeURIComponent(C.whatsappMessage) : "");
+      test.toggleAttribute("aria-disabled", !ok);
+      test.classList.toggle("is-off", !ok);
+    }
+    $("#wa-test").addEventListener("click", function (e) { if (this.classList.contains("is-off")) { e.preventDefault(); $("#s-whatsapp").focus(); } });
+    waCheck();
   }
 
   boot();

@@ -32,7 +32,9 @@
       window.localStorage.setItem(key, val);
     } catch (e) { return null; }
   }
+  /* WhatsApp chat link; without a message of its own it uses the greeting set in the admin panel */
   function waLink(text) {
+    text = text || CFG.whatsappMessage || "";
     return "https://wa.me/" + String(CFG.whatsapp || "").replace(/\D/g, "") + (text ? "?text=" + encodeURIComponent(text) : "");
   }
   function telLink() { return "tel:" + String(CFG.phone || "").replace(/[^\d+]/g, ""); }
@@ -546,6 +548,12 @@
       var k = el.getAttribute("data-cfg");
       var v = k.indexOf("stats.") === 0 ? (CFG.stats || {})[k.slice(6)] : CFG[k];
       if (v != null) el.textContent = v;
+    });
+    // the WhatsApp number in a readable form: 919876543210 -> +91 98765 43210
+    qsa("[data-wa-number]", root).forEach(function (el) {
+      var d = String(CFG.whatsapp || "").replace(/\D/g, "");
+      el.hidden = !d || /^9?1?0+$/.test(d);   // hide the placeholder number
+      el.textContent = d.length === 12 && d.indexOf("91") === 0 ? "+91 " + d.slice(2, 7) + " " + d.slice(7) : "+" + d;
     });
     qsa("[data-href]", root).forEach(function (el) {
       var k = el.getAttribute("data-href");

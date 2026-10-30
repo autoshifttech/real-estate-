@@ -89,8 +89,9 @@
   if (p.layout) plots(p);
 
   /* phones: price, WhatsApp and Call always at hand; hidden while the enquiry form is on screen */
-  var bar = document.createElement("div");
+  var bar = document.createElement("aside");
   bar.className = "buybar";
+  bar.setAttribute("aria-label", "Contact us about this property");
   bar.innerHTML = '<p class="buybar-price">' + U.formatPrice(p.price) + TLP.priceNote(p) + "</p>" +
     '<a class="buybar-btn is-wa" href="' + U.waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener">' + I.whatsapp + "<span>WhatsApp</span></a>" +
     '<a class="buybar-btn" href="' + U.telLink() + '" aria-label="Call">' + I.phone + "<span>Call</span></a>";

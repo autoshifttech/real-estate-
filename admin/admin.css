@@ -352,3 +352,12 @@ body.admin {
 .acct-row { grid-template-columns: 180px minmax(0, 2fr) minmax(0, 1.2fr) auto; }
 .acct-row select { min-height: var(--space-13); padding: 0 var(--space-7); border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--color-6); }
 @media (max-width: 860px) { .acct-row { grid-template-columns: 1fr auto; } .acct-row select, .acct-row input { grid-column: 1; } .acct-row [data-del] { grid-column: 2; grid-row: 1; } }
+
+/* settings: WhatsApp */
+.wa-panel > h2 { display: flex; align-items: center; gap: var(--space-3); }
+.wa-panel > h2 svg { width: 22px; height: 22px; color: #1a9e4b; }
+#wa-check.is-ok { color: #1a7f3f; }
+#wa-check.is-warn { color: #a15c07; }
+#wa-test svg { width: 18px; height: 18px; }
+#wa-test.is-off { opacity: 0.45; cursor: not-allowed; }
+
