@@ -63,7 +63,7 @@
     }
   },
   "functions": {
-    "api/**/*.js": {
+    "api/*.js": {
       "includeFiles": "assets/js/{config,data}.js"
     }
   }
