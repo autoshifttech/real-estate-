@@ -89,7 +89,7 @@ Sign in at **`https://<your-site>.vercel.app/admin/`** with a username and passw
 | Section | What you can do |
 |---|---|
 | Dashboard | Counts, quick actions, latest enquiries |
-| Properties | Add a property with just **photos, videos and the social-media caption** (English, Tamil or both). `assets/js/caption.js` reads the title, place, region, type, price (₹, lakhs, crores, per cent / per acre), land size, road and approval from the caption and shows a live "On the website" preview; the property page shows the caption itself, with a photo gallery and video player. Edit, duplicate, delete and reorder listings; click the status pill to cycle available / few left / sold; star to feature on the home page |
+| Properties | Add a property with just **photos, an optional video and the social-media caption** (drag and drop files, drag photos to reorder) (English, Tamil or both). `assets/js/caption.js` reads the title, place, region, type, price (₹, lakhs, crores, per cent / per acre), land size, road and approval from the caption and shows a live "On the website" preview; the property page shows the caption itself, with a photo gallery and video player. Edit, duplicate, delete and reorder listings; click the status pill to cycle available / few left / sold; star to feature on the home page |
 | Enquiries | Every form sent on the website, newest first; New / Contacted / Closed; call or WhatsApp in one tap; delete; export CSV |
 | Regions | Name, Tamil name, description, image, map position; add, reorder, delete |
 | Steps & FAQs | The "How it works" steps and the FAQ list |

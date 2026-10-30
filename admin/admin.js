@@ -434,10 +434,10 @@
       '<div class="editor-head"><button class="back" type="button" id="e-back">' + icon("back") + 'Back to properties</button><div class="actions-row"><button class="btn btn-light" id="e-cancel">Cancel</button><button class="btn btn-primary" id="e-save">' + (isNew ? "Add property" : "Save changes") + "</button></div></div>" +
       '<p class="alert" id="e-err" hidden></p>' +
       '<div class="post-editor"><div class="post-col">' +
-      '<section class="panel"><h2>Photos</h2><p class="hint">Add the photos you posted. The first photo is the cover on the website.</p>' +
+      '<section class="panel drop-zone" id="ph-zone"><h2>Photos</h2><p class="hint">Drag and drop the photos you posted, or click to upload. The first photo is the cover on the website — drag photos to change the order.</p>' +
       '<div class="media-grid" id="ph-grid"></div><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" multiple hidden><p class="media-status" id="ph-status" aria-live="polite"></p></section>' +
-      '<section class="panel"><h2>Video</h2><p class="hint">Add the reel or walkthrough video (MP4, MOV or WebM).</p>' +
-      '<div class="media-grid is-video" id="vd-grid"></div><input type="file" id="vd-file" accept="video/mp4,video/quicktime,video/webm" hidden><p class="media-status" id="vd-status" aria-live="polite"></p></section>' +
+      '<section class="panel drop-zone" id="vd-zone"><h2>Video <span class="optional">Optional</span></h2><p class="hint">Drag and drop the reel or walkthrough video (MP4, MOV or WebM), or click to upload. You can skip this.</p>' +
+      '<div class="media-grid is-video" id="vd-grid"></div><input type="file" id="vd-file" accept="video/mp4,video/quicktime,video/webm" multiple hidden><p class="media-status" id="vd-status" aria-live="polite"></p></section>' +
       '<section class="panel"><div class="field"><label for="f-caption" class="h2-label">Caption <span class="req">*</span><span class="counter" id="cap-c"></span></label>' +
       '<small style="margin:0 0 var(--space-5)">Paste the same caption you posted on Instagram or Facebook — English, தமிழ் or both. The title, place, price and land size are taken from it.</small>' +
       '<textarea id="f-caption" rows="16" maxlength="5000" placeholder="🌴 Beautiful land for sale near Tenkasi!&#10;&#10;📍 Location: Courtallam Road, Tenkasi&#10;&#10;✅ 10 cents onwards&#10;✅ Tar road access&#10;&#10;💰 Price: ₹1,80,000 per cent">' + esc(p.caption) + "</textarea></div></section>" +
@@ -469,7 +469,7 @@
     function drawPhotos() {
       var g = $("#ph-grid");
       g.innerHTML = p.images.map(function (src, i) {
-        return '<div class="media-tile"><img ' + mediaAttr(src) + ' alt="Photo ' + (i + 1) + '">' + (i === 0 ? '<span class="media-badge">Cover</span>' : "") +
+        return '<div class="media-tile" draggable="true" data-i="' + i + '"><img ' + mediaAttr(src) + ' alt="Photo ' + (i + 1) + '" draggable="false">' + (i === 0 ? '<span class="media-badge">Cover</span>' : "") +
           '<div class="media-tools">' + (i ? '<button type="button" class="icon-only" data-cover="' + i + '" aria-label="Make photo ' + (i + 1) + ' the cover" title="Make cover">' + icon("star") + "</button>" : "") +
           '<button type="button" class="icon-only" data-rm="' + i + '" aria-label="Remove photo ' + (i + 1) + '" title="Remove">' + icon("trash") + "</button></div></div>";
       }).join("") + (p.images.length < MAX_PHOTOS ? '<label class="media-add" for="ph-file">' + icon("plus") + "<span>" + (p.images.length ? "Add more photos" : "Upload photos") + "</span></label>" : "");
@@ -478,13 +478,15 @@
     $("#ph-grid").addEventListener("click", function (e) {
       var b = e.target.closest("[data-rm],[data-cover]");
       if (!b) return;
-      if (b.dataset.rm != null) p.images.splice(+b.dataset.rm, 1);
+      if (b.dataset.rm != null) { p.images.splice(+b.dataset.rm, 1); $("#ph-status").textContent = ""; }
       else p.images.unshift(p.images.splice(+b.dataset.cover, 1)[0]);
       drawPhotos();
     });
-    $("#ph-file").addEventListener("change", function (e) {
-      var files = Array.prototype.slice.call(e.target.files, 0, MAX_PHOTOS - p.images.length), st = $("#ph-status");
-      e.target.value = "";
+    $("#ph-file").addEventListener("change", function (e) { addPhotos(e.target.files); e.target.value = ""; });
+    function addPhotos(list) {
+      var all = Array.prototype.slice.call(list), st = $("#ph-status");
+      var files = all.filter(function (f) { return /^image\//.test(f.type); }).slice(0, MAX_PHOTOS - p.images.length);
+      if (!files.length) { if (all.length) toast(p.images.length >= MAX_PHOTOS ? "You can add up to " + MAX_PHOTOS + " photos." : "Drop JPG, PNG or WebP photos here.", true); return; }
       var done = 0;
       files.reduce(function (chain, file) {
         return chain.then(function () {
@@ -494,6 +496,50 @@
       }, Promise.resolve()).then(function () {
         st.textContent = done ? (done === 1 ? "Photo added." : done + " photos added.") + " Save, then publish, to show them on the website." : "";
       }).catch(function (er) { st.textContent = ""; toast(er.message, true); });
+    }
+
+    /* drag a photo onto another to reorder */
+    var dragFrom = null;
+    var phGrid = $("#ph-grid");
+    phGrid.addEventListener("dragstart", function (e) {
+      var t = e.target.closest(".media-tile");
+      if (!t) return;
+      dragFrom = +t.dataset.i; t.classList.add("is-dragging");
+      e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(dragFrom));
+    });
+    phGrid.addEventListener("dragend", function () { dragFrom = null; $$(".media-tile", phGrid).forEach(function (t) { t.classList.remove("is-dragging", "is-target"); }); });
+    phGrid.addEventListener("dragover", function (e) {
+      if (dragFrom == null) return;
+      var t = e.target.closest(".media-tile");
+      e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = "move";
+      $$(".media-tile", phGrid).forEach(function (x) { x.classList.toggle("is-target", x === t && +x.dataset.i !== dragFrom); });
+    });
+    phGrid.addEventListener("drop", function (e) {
+      if (dragFrom == null) return;
+      e.preventDefault(); e.stopPropagation();
+      var t = e.target.closest(".media-tile"), to = t ? +t.dataset.i : p.images.length - 1;
+      if (to !== dragFrom) p.images.splice(to, 0, p.images.splice(dragFrom, 1)[0]);
+      dragFrom = null; drawPhotos();
+    });
+
+    /* drop files from the computer onto the Photos or Video panel */
+    function dropZone(zone, onFiles) {
+      var depth = 0;
+      zone.addEventListener("dragenter", function (e) { if (dragFrom != null || !hasFiles(e)) return; e.preventDefault(); depth++; zone.classList.add("is-over"); });
+      zone.addEventListener("dragleave", function () { if (depth && !--depth) zone.classList.remove("is-over"); });
+      zone.addEventListener("dragover", function (e) { if (dragFrom != null || !hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+      zone.addEventListener("drop", function (e) {
+        if (dragFrom != null || !hasFiles(e)) return;
+        e.preventDefault(); depth = 0; zone.classList.remove("is-over");
+        onFiles(e.dataTransfer.files);
+      });
+    }
+    function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
+    dropZone($("#ph-zone"), addPhotos);
+    dropZone($("#vd-zone"), function (files) {
+      var vids = Array.prototype.filter.call(files, function (f) { return /^video\//.test(f.type); });
+      if (!vids.length) return toast("Drop an MP4, MOV or WebM video here.", true);
+      addVideos(vids);
     });
 
     /* videos */
@@ -507,16 +553,26 @@
     }
     $("#vd-grid").addEventListener("click", function (e) {
       var b = e.target.closest("[data-rm]");
-      if (b) { p.videos.splice(+b.dataset.rm, 1); drawVideos(); }
+      if (b) { p.videos.splice(+b.dataset.rm, 1); $("#vd-status").textContent = ""; drawVideos(); }
     });
-    $("#vd-file").addEventListener("change", function (e) {
-      var file = e.target.files[0], st = $("#vd-status");
-      e.target.value = "";
-      if (!file) return;
-      st.textContent = "Uploading video…";
-      uploadVideo(file).then(function (path) { p.videos.push(path); drawVideos(); st.textContent = "Video added. Save, then publish, to show it on the website."; })
-        .catch(function (er) { st.textContent = ""; toast(er.message, true); });
-    });
+    $("#vd-file").addEventListener("change", function (e) { addVideos(e.target.files); e.target.value = ""; });
+    function addVideos(list) {
+      var files = Array.prototype.slice.call(list, 0, MAX_VIDEOS - p.videos.length), st = $("#vd-status"), done = 0;
+      if (!files.length) { if (list.length) toast("You can add up to " + MAX_VIDEOS + " videos.", true); return; }
+      files.reduce(function (chain, file) {
+        return chain.then(function () {
+          st.textContent = "Uploading video" + (files.length > 1 ? " " + (done + 1) + " of " + files.length : "") + "…";
+          return uploadVideo(file).then(function (path) { p.videos.push(path); done++; drawVideos(); });
+        });
+      }, Promise.resolve()).then(function () {
+        st.textContent = done ? (done === 1 ? "Video added." : done + " videos added.") + " Save, then publish, to show it on the website." : "";
+      }).catch(function (er) { st.textContent = ""; toast(er.message, true); });
+    }
+    /* stop a file dropped just outside the panels from opening in the tab */
+    if (!window.__tlpDropGuard) {
+      window.__tlpDropGuard = true;
+      ["dragover", "drop"].forEach(function (t) { window.addEventListener(t, function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0) e.preventDefault(); }); });
+    }
 
     drawPhotos(); drawVideos();
 
