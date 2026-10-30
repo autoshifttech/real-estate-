@@ -10,7 +10,7 @@
 
   var id = new URLSearchParams(window.location.search).get("id");
   var p = U.property(id);
-  var hero = qs("#prop-hero"), main = qs("#prop-main"), specBar = qs("#spec-bar"), form = qs("#prop-form");
+  var hero = qs("#prop-hero"), main = qs("#prop-main"), specBar = qs("#spec-bar");
 
   if (!p) {
     document.title = "Property not found — " + CFG.name;
@@ -74,16 +74,25 @@
   main.innerHTML = html;
   if (photos.length > 1) lightbox(photos);
 
-  /* enquiry form */
-  var sold = p.status === "sold";
+  /* booking: straight to WhatsApp, with the property (and the chosen plot) in the message */
+  var sold = p.status === "sold", chosenPlot = "";
+  function waText() {
+    return sold
+      ? "Hi! I saw " + p.title + " (" + p.location + ") is sold out. Do you have similar land?"
+      : "Hi! I'm interested in " + p.title + " (" + p.location + ")." + (chosenPlot ? " " + chosenPlot + "." : "") + " Please share the details and a time for a site visit.";
+  }
+  function updateWa() {
+    var href = U.waLink(waText());
+    qs("#prop-wa-btn").href = href;
+    var b = qs(".buybar .is-wa"); if (b) b.href = href;
+  }
   qs("#aside-price").innerHTML = '<p class="price">' + U.formatPrice(p.price) + TLP.priceNote(p) + "</p>" + TLP.statusBadge(p);
   qs("#aside-title").textContent = sold ? "Ask about similar land" : "Book a site visit";
-  qs("#aside-quick").innerHTML =
-    '<a class="btn btn-light" href="' + U.waLink("Hi! I'm interested in " + p.title + ".") + '" target="_blank" rel="noopener">' + I.whatsapp + "WhatsApp</a>" +
-    '<a class="btn btn-light" href="' + U.telLink() + '">' + I.phone + "Call</a>";
-  if (!p.layout) qs("#pf-plot-field").hidden = true;
-  try { qs("#pf-date").min = new Date().toISOString().slice(0, 10); } catch (e) { /* optional */ }
-  TLP.bindForm(form, function () { return { property: p.title + " (" + p.location + ")" }; });
+  if (sold) qs("#aside-sub").textContent = "This one is sold out. Message us on WhatsApp and we'll share similar land nearby.";
+  qs("#prop-wa-btn").innerHTML = I.whatsapp + "Chat on WhatsApp";
+  qs("#prop-call").href = U.telLink();
+  qs("#prop-call").innerHTML = I.phone + "Call " + esc(CFG.phone || "");
+  updateWa();
 
   /* plot chooser */
   if (p.layout) plots(p);
@@ -93,7 +102,7 @@
   bar.className = "buybar";
   bar.setAttribute("aria-label", "Contact us about this property");
   bar.innerHTML = '<p class="buybar-price">' + U.formatPrice(p.price) + TLP.priceNote(p) + "</p>" +
-    '<a class="buybar-btn is-wa" href="' + U.waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener">' + I.whatsapp + "<span>WhatsApp</span></a>" +
+    '<a class="buybar-btn is-wa" href="' + U.waLink(waText()) + '" target="_blank" rel="noopener">' + I.whatsapp + "<span>WhatsApp</span></a>" +
     '<a class="buybar-btn" href="' + U.telLink() + '" aria-label="Call">' + I.phone + "<span>Call</span></a>";
   document.body.appendChild(bar);
   document.body.classList.add("has-buybar");
@@ -180,10 +189,9 @@
     var avail = total - sold.length - booked.length;
     host.innerHTML = '<div class="plots-map" style="--cols:' + cols + '">' + svg + "</div>" +
       '<div class="plots-legend"><span><i></i>Available</span><span><i class="b"></i>Booked</span><span><i class="s"></i>Sold</span><span><i class="sel"></i>Your choice</span></div>' +
-      '<p class="plots-pick" id="plots-pick" aria-live="polite">' + (avail ? "<b>" + avail + "</b> of " + total + " plots available · each " + esc(L.plotSize) + ". Choose one to add it to your enquiry." : "All plots in this layout have been sold.") + "</p>";
+      '<p class="plots-pick" id="plots-pick" aria-live="polite">' + (avail ? "<b>" + avail + "</b> of " + total + " plots available · each " + esc(L.plotSize) + ". Choose one to add it to your WhatsApp message." : "All plots in this layout have been sold.") + "</p>";
 
     var nodes = qsa(".plot", host), current = 0, firstAvail = nodes.filter(function (n) { return n.classList.contains("is-available"); })[0];
-    var plotInput = form.elements.plot;
     if (firstAvail) { firstAvail.tabIndex = 0; current = +firstAvail.dataset.i; } else nodes[0].tabIndex = 0;
 
     function focusAt(i) {
@@ -195,8 +203,10 @@
       nodes.forEach(function (o) { o.classList.remove("is-selected"); if (o.classList.contains("is-available")) o.setAttribute("aria-pressed", "false"); });
       n.classList.add("is-selected"); n.setAttribute("aria-pressed", "true");
       var name = "Plot " + String(+n.dataset.i + 1).padStart(2, "0");
-      plotInput.value = name + " (" + L.plotSize + ")";
-      qs("#plots-pick").innerHTML = "Selected <b>" + name + "</b> · " + esc(L.plotSize) + ". It's in your enquiry form.";
+      chosenPlot = "Plot: " + name + " (" + L.plotSize + ")";
+      updateWa();
+      var wp = qs("#wa-plot"); wp.hidden = false; wp.innerHTML = "Selected <b>" + esc(name) + "</b> · " + esc(L.plotSize);
+      qs("#plots-pick").innerHTML = "Selected <b>" + name + "</b> · " + esc(L.plotSize) + ". It's in your WhatsApp message.";
     }
     host.addEventListener("click", function (e) { var n = e.target.closest(".plot"); if (n) { focusAt(+n.dataset.i); choose(n); } });
     host.addEventListener("keydown", function (e) {

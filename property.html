@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+Tamil:wght@400;500&display=swap">
-  <link rel="stylesheet" href="assets/css/art.css?v=20261031d">
-  <link rel="stylesheet" href="assets/css/style.css?v=20261031d">
+  <link rel="stylesheet" href="assets/css/art.css?v=20261031e">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261031e">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body data-page="properties">
@@ -25,23 +25,14 @@
         <div class="wrap prop-layout">
           <div class="prop-main" id="prop-main"></div>
           <aside class="prop-aside" id="enquire" aria-labelledby="aside-title">
-            <form class="form-card" id="prop-form" novalidate>
+            <div class="wa-card wa-card--prop" id="prop-wa">
               <div class="aside-price" id="aside-price"></div>
               <h3 id="aside-title">Book a site visit</h3>
-              <p>We'll confirm a time on WhatsApp and send the location pin.</p>
-              <div class="form-grid">
-                <div class="field field--full"><label for="pf-name">Name</label><input id="pf-name" name="name" autocomplete="name" required><span class="err" aria-live="polite"></span></div>
-                <div class="field field--full"><label for="pf-phone">Phone</label><input id="pf-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required><span class="err" aria-live="polite"></span></div>
-                <div class="field field--full"><label for="pf-date">Preferred visit date</label><input id="pf-date" name="date" type="date"></div>
-                <div class="field field--full" id="pf-plot-field"><label for="pf-plot">Plot</label><input id="pf-plot" name="plot" placeholder="Choose a plot on the layout" readonly></div>
-                <div class="field field--full"><label for="pf-msg">Message</label><textarea id="pf-msg" name="message" placeholder="Anything we should know?"></textarea></div>
-              </div>
-              <div class="form-actions">
-                <button class="btn btn-primary btn-block" type="submit">Send enquiry</button>
-                <p class="form-status" role="status"></p>
-              </div>
-              <div class="aside-quick" id="aside-quick"></div>
-            </form>
+              <p id="aside-sub">Message us on WhatsApp — we'll send the location pin, the documents and a time to visit.</p>
+              <p class="wa-plot" id="wa-plot" hidden></p>
+              <a class="btn wa-btn" id="prop-wa-btn" href="#" target="_blank" rel="noopener"></a>
+              <a class="btn btn-light btn-block" id="prop-call" href="#"></a>
+            </div>
           </aside>
         </div>
       </section>
@@ -70,15 +61,15 @@
     </section>
   </main>
 
-  <script src="assets/js/config.js?v=20261031d"></script>
-  <script src="assets/js/data.js?v=20261031d"></script>
+  <script src="assets/js/config.js?v=20261031e"></script>
+  <script src="assets/js/data.js?v=20261031e"></script>
   <script src="/api/site"></script>
-  <script src="assets/js/demo.js?v=20261031d"></script>
-  <script src="assets/js/media.js?v=20261031d"></script>
-  <script src="assets/js/caption.js?v=20261031d"></script>
-  <script src="assets/js/scenes.js?v=20261031d"></script>
-  <script src="assets/js/art.js?v=20261031d"></script>
-  <script src="assets/js/core.js?v=20261031d"></script>
-  <script src="assets/js/property.js?v=20261031d"></script>
+  <script src="assets/js/demo.js?v=20261031e"></script>
+  <script src="assets/js/media.js?v=20261031e"></script>
+  <script src="assets/js/caption.js?v=20261031e"></script>
+  <script src="assets/js/scenes.js?v=20261031e"></script>
+  <script src="assets/js/art.js?v=20261031e"></script>
+  <script src="assets/js/core.js?v=20261031e"></script>
+  <script src="assets/js/property.js?v=20261031e"></script>
 </body>
 </html>

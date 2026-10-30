@@ -365,7 +365,8 @@
     try { seen = window.sessionStorage.getItem("tlp-seen") === "1"; window.sessionStorage.setItem("tlp-seen", "1"); } catch (e) { /* ignore */ }
     if (seen || reduced()) { el.classList.add("is-done"); return; }
     var start = Date.now(), done = false;
-    function finish() { if (done) return; done = true; setTimeout(function () { el.classList.add("is-done"); }, Math.max(0, 1500 - (Date.now() - start))); }
+    document.documentElement.classList.add("is-intro");
+    function finish() { if (done) return; done = true; setTimeout(function () { el.classList.add("is-done"); document.documentElement.classList.remove("is-intro"); }, Math.max(0, 1500 - (Date.now() - start))); }
     if (document.readyState === "complete") finish(); else window.addEventListener("load", finish);
     setTimeout(finish, 2600);
   }

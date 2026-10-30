@@ -431,7 +431,19 @@
     TLP.bindForm(f);
   }
 
+  /* the WhatsApp button waits until the opening scenes have been scrolled past */
+  function waAfterHero() {
+    var st = qs(".story");
+    if (!st) return;
+    var html = document.documentElement, raf = 0;
+    function check() { raf = 0; html.classList.toggle("wa-hide", st.getBoundingClientRect().bottom > window.innerHeight * 0.6); }
+    window.addEventListener("scroll", function () { if (!raf) raf = requestAnimationFrame(check); }, { passive: true });
+    window.addEventListener("resize", check);
+    check();
+  }
+
   story();
+  waAfterHero();
   featured();
   regions();
   categories();
