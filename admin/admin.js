@@ -414,59 +414,110 @@
     return { content: c, enq: e && e.length ? e : null };
   }
   function moveBrowserData() {
-    var b = browserData(), st = $("#move-st"), btn = $("#move-go");
+    var b = browserData();
     if (!b) return;
     confirmBox("Move to the database?", "What you published in this browser replaces the content on the website.", "Move").then(function (ok) {
       if (!ok) return;
-      btn.disabled = true; btn.classList.add("is-loading");
-      var data = b.content && b.content.data ? clone(b.content.data) : null, jobs = [];
-      // every photo / video kept in this browser goes to Supabase Storage first
-      (data ? data.properties : []).forEach(function (p) {
-        ["images", "videos"].forEach(function (k) {
-          (p[k] || []).forEach(function (src, i) { jobs.push({ p: p, k: k, i: i, src: src }); });
-        });
-        if (p.image && (!p.images || p.images.indexOf(p.image) < 0)) jobs.push({ p: p, k: "image", src: p.image });
-      });
-      jobs = jobs.filter(function (j) { return /^(local:|data:)/.test(j.src); });
-      var done = 0, cache = {};
-      var chain = jobs.reduce(function (c, j) {
-        return c.then(function () {
-          st.textContent = "Uploading photos and videos… " + (done + 1) + " of " + jobs.length;
-          var up = cache[j.src] || (cache[j.src] = (/^local:/.test(j.src) ? TLP_MEDIA.get(j.src) : Promise.resolve(dataUrlBlob(j.src))).then(function (blob) {
-            if (!blob) return null;
-            return direct(blob, (j.p.id || "file") + (j.k === "videos" ? "-video" : ""));
-          }));
-          return up.then(function (url) {
-            done++;
-            if (!url) return;
-            if (j.k === "image") j.p.image = url; else j.p[j.k][j.i] = url;
-          });
-        });
-      }, Promise.resolve());
-      chain.then(function () {
-        if (data) data.properties.forEach(function (p) {
-          ["images", "videos"].forEach(function (k) { if (p[k]) p[k] = p[k].filter(function (x) { return !/^(local:|data:)/.test(x); }); });
-          if (p.images && p.images.length) p.image = p.images[0]; else if (p.image && /^(local:|data:)/.test(p.image)) delete p.image;
-        });
-        if (!(b.content && (b.content.config || data))) return;
-        st.textContent = "Publishing…";
-        return api("publish", { config: b.content.config || undefined, data: data || undefined, shas: S.shas }).then(function (d) { S.shas = d.shas; });
-      }).then(function () {
-        if (!b.enq) return;
-        st.textContent = "Adding enquiries…";
-        return api("import", { items: b.enq }).then(function () { S.enquiries = null; });
-      }).then(function () {
+      transfer(b, $("#move-st"), $("#move-go"), function () {
         try { localStorage.removeItem(DEMO.key); localStorage.removeItem(DEMO.enq); } catch (e) {}
         if (window.TLP_MEDIA) TLP_MEDIA.clear();
-        return loadContent();
-      }).then(function () {
-        toast("Moved. Everyone now sees this content on the website.");
-        go("dashboard"); if (SHOW_ENQUIRIES) refreshEnquiryCount();
-      }).catch(function (e) {
-        btn.disabled = false; btn.classList.remove("is-loading"); st.textContent = "";
-        toast(e.message + " Nothing in this browser was removed, so you can try again.", true);
-      });
+      }, "Moved. Everyone now sees this content on the website.");
     });
+  }
+
+  /* Publish saved content to the database: photos / videos that live in this browser ("local:")
+     or inside a backup file ("data:") are uploaded to Supabase Storage first.
+     b = { content: { config, data }, enq: [..] | null, media: { "local:id": "data:…" } | null } */
+  function transfer(b, st, btn, after, doneMsg) {
+    btn.disabled = true; btn.classList.add("is-loading");
+    var data = b.content && b.content.data ? clone(b.content.data) : null, jobs = [], media = b.media || {};
+    (data ? data.properties : []).forEach(function (p) {
+      ["images", "videos"].forEach(function (k) {
+        (p[k] || []).forEach(function (src, i) { jobs.push({ p: p, k: k, i: i, src: src }); });
+      });
+      if (p.image && (!p.images || p.images.indexOf(p.image) < 0)) jobs.push({ p: p, k: "image", src: p.image });
+    });
+    jobs = jobs.filter(function (j) { return /^(local:|data:)/.test(j.src); });
+    var done = 0, cache = {};
+    function blobOf(src) {
+      if (media[src]) return Promise.resolve(dataUrlBlob(media[src]));
+      if (/^local:/.test(src)) return window.TLP_MEDIA ? TLP_MEDIA.get(src).catch(function () { return null; }) : Promise.resolve(null);
+      return Promise.resolve(dataUrlBlob(src));
+    }
+    var chain = jobs.reduce(function (c, j) {
+      return c.then(function () {
+        st.textContent = "Uploading photos and videos… " + (done + 1) + " of " + jobs.length;
+        var up = cache[j.src] || (cache[j.src] = blobOf(j.src).then(function (blob) {
+          return blob ? direct(blob, (j.p.id || "file") + (j.k === "videos" ? "-video" : "")) : null;
+        }));
+        return up.then(function (url) {
+          done++;
+          if (!url) return;
+          if (j.k === "image") j.p.image = url; else j.p[j.k][j.i] = url;
+        });
+      });
+    }, Promise.resolve());
+    return chain.then(function () {
+      if (data) data.properties.forEach(function (p) {
+        ["images", "videos"].forEach(function (k) { if (p[k]) p[k] = p[k].filter(function (x) { return !/^(local:|data:)/.test(x); }); });
+        if (p.images && p.images.length) p.image = p.images[0]; else if (p.image && /^(local:|data:)/.test(p.image)) delete p.image;
+      });
+      if (!(b.content && (b.content.config || data))) return;
+      st.textContent = "Publishing…";
+      return api("publish", { config: b.content.config || undefined, data: data || undefined, shas: S.shas }).then(function (d) { S.shas = d.shas; });
+    }).then(function () {
+      if (!b.enq || !b.enq.length) return;
+      st.textContent = "Saving enquiries…";
+      return api("import", { items: b.enq }).then(function () { S.enquiries = null; });
+    }).then(function () {
+      if (after) after();
+      return loadContent();
+    }).then(function () {
+      toast(doneMsg);
+      go(S.view === "settings" ? "settings" : "dashboard");
+    }).catch(function (e) {
+      btn.disabled = false; btn.classList.remove("is-loading"); st.textContent = "";
+      toast(e.message + " Nothing was removed, so you can try again.", true);
+    });
+  }
+
+  /* ---------- backup: download everything as one file, restore it anywhere ---------- */
+  function readAsDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(new Error("Could not read a photo or video")); };
+      r.readAsDataURL(blob);
+    });
+  }
+  function downloadBackup(btn) {
+    btn.disabled = true; btn.classList.add("is-loading");
+    var media = {}, refs = [];
+    (S.data.properties || []).forEach(function (p) {
+      (p.images || []).concat(p.videos || [], p.image ? [p.image] : []).forEach(function (x) { if (/^local:/.test(x) && refs.indexOf(x) < 0) refs.push(x); });
+    });
+    refs.reduce(function (c, ref) {
+      return c.then(function () {
+        return TLP_MEDIA.get(ref).then(function (blob) { return blob ? readAsDataUrl(blob).then(function (u) { media[ref] = u; }) : null; }).catch(function () {});
+      });
+    }, Promise.resolve()).then(function () {
+      var backup = { app: "tenkasi-admin-backup", version: 1, savedAt: new Date().toISOString(), config: S.config, data: S.data, media: media, enquiries: DEMO.on ? lsGet(DEMO.enq, []) : [] };
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: "application/json" }));
+      a.download = "tenkasi-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      toast("Backup downloaded (" + S.data.properties.length + " properties" + (refs.length ? ", " + refs.length + " photos / videos" : "") + ").");
+    }).catch(function (e) { toast(e.message, true); }).then(function () { btn.disabled = false; btn.classList.remove("is-loading"); });
+  }
+  function restoreBackup(file, btn, st) {
+    if (!file) return;
+    file.text().then(function (t) {
+      var b = JSON.parse(t);
+      if (!b || b.app !== "tenkasi-admin-backup" || !b.data || !b.config) throw new Error("That file is not a Tenkasi admin backup.");
+      return confirmBox("Restore this backup?", "The website will show the " + b.data.properties.length + " properties and the settings from this file (saved " + new Date(b.savedAt).toLocaleDateString("en-IN") + "). What is on the website now is replaced.", "Restore").then(function (ok) {
+        if (ok) return transfer({ content: { config: b.config, data: b.data }, enq: b.enquiries || [], media: b.media || {} }, st, btn, null, "Backup restored. Everyone now sees this content on the website.");
+      });
+    }).catch(function (e) { toast(e instanceof SyntaxError ? "That file could not be read as a backup." : e.message, true); });
   }
 
   /* ---------- properties ---------- */
@@ -1046,6 +1097,10 @@
       '<section class="panel"><h2>Social links</h2><p class="hint">Main accounts, shown in the menu and footer.</p><div class="grid-3">' + f("instagram", "Instagram", "https://…", "url") + f("youtube", "YouTube", "https://…", "url") + f("threads", "Threads", "https://…", "url") + "</div>" +
       '<h3 class="sub-h">More accounts</h3><p class="hint">Extra pages or a second account. Each one appears as an icon in the website footer.</p><div class="rows" id="socials"></div>' +
       '<button class="btn btn-light btn-sm add-row" id="social-add" style="margin-top:var(--space-5)">' + icon("plus") + "Add account</button></section>" +
+      '<section class="panel"><h2>Backup</h2><p class="hint">' + (DEMO.on ? "Your content, photos and videos are saved in this browser only. Download a backup to keep them safe or to move them to the live website." : "Download all content, settings and photo links as one file. Restore a backup (for example one downloaded from the old website address) to publish it here.") + '</p><div class="quick">' +
+        '<button class="btn btn-light btn-sm" id="bk-down">' + icon("download") + "Download backup</button>" +
+        (!DEMO.on && S.storage === "Supabase" ? '<label class="btn btn-light btn-sm" for="bk-file" style="cursor:pointer">' + icon("up") + 'Restore from backup</label><input type="file" id="bk-file" accept="application/json,.json" hidden>' : "") +
+        '</div><p class="media-status" id="bk-st" aria-live="polite"></p></section>' +
       (DEMO.on ? '<section class="panel"><h2>Restore original content</h2><p class="hint">Undo every published change and remove uploaded photos and enquiries.</p><button class="btn btn-danger btn-sm" id="demo-reset">Restore original</button></section>' : "") +
       '<section class="panel"><h2>Numbers on the website</h2><div class="grid-3">' + f("stats.followers", "Followers", "e.g. 3L+") + f("stats.videos", "Posts & videos", "e.g. 1,350+") + f("stats.regions", "Regions", "e.g. 7") + "</div></section>";
     // more social accounts
@@ -1073,6 +1128,9 @@
     });
     drawSocials();
 
+    $("#bk-down", v).addEventListener("click", function () { downloadBackup(this); });
+    var bf = $("#bk-file", v);
+    if (bf) bf.addEventListener("change", function (e) { var f = e.target.files[0]; e.target.value = ""; restoreBackup(f, $("label[for=bk-file]"), $("#bk-st")); });
     var dr = $("#demo-reset", v);
     if (dr) dr.addEventListener("click", function () {
       confirmBox("Restore the original content?", "All published changes, uploaded photos and enquiries will be removed.", "Restore", true).then(function (ok) {

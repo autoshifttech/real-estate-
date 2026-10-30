@@ -124,6 +124,7 @@ Content, photos and videos are saved in [Supabase](https://supabase.com) (free p
 
 5. **Redeploy** — Deployments → ⋯ → **Redeploy**. Open `/admin/` and sign in.
 6. **Move what you added in demo mode** — if you used the admin before this, sign in **in the same browser**: the dashboard shows **Move what you saved in this browser**. It uploads those photos and videos to Supabase, publishes the content and keeps any old enquiries in the database. The first time anyone opens the site or admin, the database is filled with the current site content automatically.
+   Used the admin on a **different web address** before (for example an old Vercel URL)? A browser keeps that data per address, so open the **old** address's `/admin/` in that browser → **Settings → Backup → Download backup**, then on the new address **Settings → Backup → Restore from backup** and pick the file. Photos and videos are uploaded to Supabase and everything is published.
 
 To change the password, edit `ADMIN_PASSWORD` in Vercel and redeploy.
 
