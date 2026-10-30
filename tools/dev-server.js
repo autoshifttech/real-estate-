@@ -18,7 +18,7 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": 
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
-  if (url.pathname === "/api/admin" || url.pathname === "/api/enquiry") {
+  if (url.pathname === "/api/admin" || url.pathname === "/api/enquiry" || url.pathname === "/api/site") {
     const mod = path.join(ROOT, "api", url.pathname.slice(5) + ".js");
     delete require.cache[require.resolve(mod)];
     return require(mod)(req, res);

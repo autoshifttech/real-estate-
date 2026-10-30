@@ -44,7 +44,7 @@
       ]
     },
     {
-      "source": "/api/(.*)",
+      "source": "/api/(admin|enquiry)(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -60,6 +60,11 @@
   "git": {
     "deploymentEnabled": {
       "admin-data": false
+    }
+  },
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "assets/js/{config,data}.js"
     }
   }
 }

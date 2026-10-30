@@ -21,6 +21,16 @@ const SOCIALS = ["instagram", "youtube", "facebook", "x", "linkedin", "telegram"
 const PHOTO_PATH = /^assets\/img\/properties\/[a-z0-9-]+\.(webp|jpg|jpeg|png)$/;
 const VIDEO_PATH = /^assets\/video\/properties\/[a-z0-9-]+\.(mp4|mov|webm)$/;
 
+/* photos / videos uploaded to Supabase Storage */
+function supaMedia(x, exts) {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  if (!base) return false;
+  const prefix = base + "/storage/v1/object/public/media/properties/";
+  return x.indexOf(prefix) === 0 && new RegExp("^[a-z0-9-]+\\.(" + exts + ")$").test(x.slice(prefix.length));
+}
+function photoOk(x) { return PHOTO_PATH.test(x) || supaMedia(x, "webp|jpg|jpeg|png"); }
+function videoOk(x) { return VIDEO_PATH.test(x) || supaMedia(x, "mp4|mov|webm"); }
+
 function bad(msg) { return Object.assign(new Error(msg), { status: 400 }); }
 
 function parse(kind, text) {
@@ -172,16 +182,16 @@ function cleanProperty(p, i, regionIds, typeIds) {
   if (scene) out.scene = scene;
   const caption = str(p.caption, 5000, f + ": caption");
   if (caption) out.caption = caption;
-  const images = list(p.images, f + ": photos", 20).map((x) => str(x, 200, f + ": photo"));
-  images.forEach((x) => { if (!PHOTO_PATH.test(x)) throw bad(f + ": photo path is not valid"); });
+  const images = list(p.images, f + ": photos", 20).map((x) => str(x, 400, f + ": photo"));
+  images.forEach((x) => { if (!photoOk(x)) throw bad(f + ": photo path is not valid"); });
   if (images.length) out.images = images;
-  const image = str(p.image, 200, f + ": photo") || images[0] || "";
+  const image = str(p.image, 400, f + ": photo") || images[0] || "";
   if (image) {
-    if (!PHOTO_PATH.test(image)) throw bad(f + ": photo path is not valid");
+    if (!photoOk(image)) throw bad(f + ": photo path is not valid");
     out.image = image;
   }
-  const videos = list(p.videos, f + ": videos", 3).map((x) => str(x, 200, f + ": video"));
-  videos.forEach((x) => { if (!VIDEO_PATH.test(x)) throw bad(f + ": video path is not valid"); });
+  const videos = list(p.videos, f + ": videos", 3).map((x) => str(x, 400, f + ": video"));
+  videos.forEach((x) => { if (!videoOk(x)) throw bad(f + ": video path is not valid"); });
   if (videos.length) out.videos = videos;
   const video = url(p.video, f + ": video link");
   if (video) out.video = video;

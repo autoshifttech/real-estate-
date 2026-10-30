@@ -21,10 +21,12 @@ const auth = require("./_lib/auth");
 const storage = require("./_lib/store");
 const content = require("./_lib/content");
 const enquiries = require("./_lib/enquiries");
+const supa = require("./_lib/supabase");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function loadContent() {
+  if (supa.configured()) return supa.readContent();
   const s = storage.store();
   const [c, d] = await Promise.all([s.read(content.FILES.config), s.read(content.FILES.data)]);
   if (!c || !d) throw Object.assign(new Error("Could not find the content files in the repository"), { status: 500 });
@@ -47,7 +49,7 @@ function imageOk(buf, ext) {
 const actions = {
   async status(req, res) {
     const problems = [auth.configError(), storage.configError()].filter(Boolean);
-    send(res, 200, { ok: true, configured: !problems.length, problems, user: auth.currentUser(req), storage: process.env.TLP_STORAGE === "fs" ? "local files" : "GitHub" });
+    send(res, 200, { ok: true, configured: !problems.length, problems, user: auth.currentUser(req), storage: supa.configured() ? "Supabase" : process.env.TLP_STORAGE === "fs" ? "local files" : "GitHub" });
   },
 
   async login(req, res, body) {
@@ -85,10 +87,43 @@ const actions = {
       what.push("content");
     }
     if (!files.length) return fail(res, 400, "Nothing to publish");
+    if (supa.configured()) {
+      const shas = Object.assign({}, current.shas);
+      // check both versions before writing either, so a conflict never half-saves
+      ["config", "data"].forEach((k) => { if (body[k] && String(body.shas && body.shas[k]) !== current.shas[k]) throw Object.assign(new Error("Someone else published changes since you opened the admin panel."), { status: 409 }); });
+      for (const f of files) {
+        const k = f.path === content.FILES.config ? "config" : "data";
+        shas[k] = await supa.saveContent(k, content.parse(k, f.content), current.shas[k]);
+      }
+      return send(res, 200, { ok: true, shas });
+    }
     const message = "Admin: update " + what.join(" and ") + (body.note ? " — " + String(body.note).slice(0, 120) : "");
     const commit = await storage.store().commit(files, message, { expect });
     const fresh = await loadContent();
     send(res, 200, { ok: true, commit, shas: fresh.shas });
+  },
+
+  /* Supabase: a one-time link the browser uploads the file to directly (videos are too big for this API) */
+  async sign(req, res, body) {
+    if (!supa.configured()) return fail(res, 400, "Uploads go through the upload action here");
+    send(res, 200, Object.assign({ ok: true }, await supa.signUpload(body.name, body.type, Number(body.size))));
+  },
+
+  /* move enquiries kept in a browser (before the database was connected) into the inbox */
+  async import(req, res, body) {
+    const items = Array.isArray(body.items) ? body.items.slice(0, 500) : [];
+    const F = { name: 80, phone: 30, intent: 10, property: 160, plot: 60, region: 120, type: 60, budget: 60, area: 80, date: 20, message: 1500, page: 200, note: 1000 };
+    let n = 0;
+    for (const x of items) {
+      if (!x || typeof x !== "object" || !x.name || !x.phone) continue;
+      const rec = {};
+      Object.keys(F).forEach((k) => { if (x[k]) rec[k] = String(x[k]).trim().slice(0, F[k]); });
+      rec.status = enquiries.STATUSES.indexOf(x.status) >= 0 ? x.status : "new";
+      const at = Date.parse(x.at);
+      if (supa.configured()) await supa.addEnquiry(rec, isFinite(at) ? at : undefined); else await enquiries.add(rec);
+      n++;
+    }
+    send(res, 200, { ok: true, count: n });
   },
 
   async upload(req, res, body) {
@@ -122,7 +157,7 @@ const actions = {
 };
 
 const PUBLIC = { status: "GET", login: "POST" };
-const METHOD = { logout: "POST", content: "GET", publish: "POST", upload: "POST", enquiries: "GET", enquiry: "POST" };
+const METHOD = { logout: "POST", content: "GET", publish: "POST", upload: "POST", sign: "POST", import: "POST", enquiries: "GET", enquiry: "POST" };
 
 module.exports = async function (req, res) {
   const a = new URL(req.url, "http://x").searchParams.get("a") || "";

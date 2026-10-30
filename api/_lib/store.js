@@ -27,6 +27,7 @@ function siteBranch() {
 
 function configError() {
   if (process.env.TLP_STORAGE === "fs") return null;
+  if (require("./supabase").configured()) return require("./supabase").configError();
   if (!process.env.GITHUB_TOKEN) return "Missing setting in Vercel: GITHUB_TOKEN";
   if (!repo()) return "Missing setting in Vercel: GITHUB_REPO (owner/repo)";
   return null;

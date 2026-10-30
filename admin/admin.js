@@ -169,6 +169,7 @@
   function boot() {
     fetch("/api/admin?a=status", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (st) {
       if (!st.configured) return startDemo();
+      S.storage = st.storage;
       if (!st.user) return renderLogin();
       S.user = st.user;
       return loadContent().then(renderShell);
@@ -360,8 +361,9 @@
     btn.disabled = true; btn.classList.add("is-loading");
     api("publish", { config: S.dirty.config ? S.config : undefined, data: S.dirty.data ? S.data : undefined, shas: S.shas }).then(function (d) {
       S.shas = d.shas; S.dirty = { config: false, data: false };
-      renderPublish(DEMO.on ? "Published" : "Published · the website updates in about a minute");
-      toast(DEMO.on ? "Published. The website shows the changes now." : "Published. The website will show the changes in about a minute.");
+      var soon = DEMO.on || S.storage === "Supabase";
+      renderPublish(soon ? "Published" : "Published · the website updates in about a minute");
+      toast(DEMO.on ? "Published. The website shows the changes now." : soon ? "Published. The website shows the changes within a few seconds." : "Published. The website will show the changes in about a minute.");
     }).catch(function (e) {
       btn.disabled = false; btn.classList.remove("is-loading");
       if (e.status === 409) {
@@ -383,10 +385,15 @@
       '<button class="btn btn-light" data-go="enquiries">' + icon("inbox") + "Open enquiries</button>" +
       '<button class="btn btn-light" data-go="settings">' + icon("cog") + "Phone, WhatsApp & links</button>" +
       '<a class="btn btn-light" href="../index.html" target="_blank" rel="noopener">' + icon("ext") + "View website</a></div></section>" +
+      (!DEMO.on && S.storage === "Supabase" && browserData() ? '<section class="panel move-panel" id="move"><h2>Move what you saved in this browser</h2><p class="hint">Before the database was connected, your changes' + (browserData().enq ? ", photos and enquiries" : " and photos") + ' were kept in this browser only. Move them to the database so everyone sees them.</p><div class="quick"><button class="btn btn-primary" id="move-go">Move to the database</button><button class="btn btn-light" id="move-skip">Not now</button></div><p class="media-status" id="move-st" aria-live="polite"></p></section>' : "") +
       '<section class="panel"><div class="panel-head"><h2>Latest enquiries</h2><button class="btn btn-light btn-sm" data-go="enquiries">See all</button></div><div id="dash-enq" class="rows"><p class="muted">Loading…</p></div></section>';
     $$("[data-go]", v).forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.go); }); });
     $("[data-act=add]", v).addEventListener("click", function () { openEditor(null); });
-    getEnquiries().then(function (items) {
+    if ($("#move", v)) {
+      $("#move-skip").addEventListener("click", function () { $("#move").remove(); });
+      $("#move-go").addEventListener("click", moveBrowserData);
+    }
+    getEnquiries(true).then(function (items) {
       var box = $("#dash-enq");
       if (!box) return;
       var latest = items.slice(0, 5);
@@ -395,6 +402,68 @@
     }).catch(function (e) { var box = $("#dash-enq"); if (box) box.innerHTML = '<p class="alert">' + esc(e.message) + "</p>"; });
   }
   function kpi(n, label) { return '<div class="kpi"><b>' + n + "</b><span>" + esc(label) + "</span></div>"; }
+
+  /* ---------- moving browser-only data into the database ---------- */
+  function browserData() {
+    var c = lsGet(DEMO.key, null), e = lsGet(DEMO.enq, []);
+    if (!(c && (c.config || c.data)) && !(e && e.length)) return null;
+    return { content: c, enq: e && e.length ? e : null };
+  }
+  function moveBrowserData() {
+    var b = browserData(), st = $("#move-st"), btn = $("#move-go");
+    if (!b) return;
+    confirmBox("Move to the database?", "What you published in this browser replaces the content on the website" + (b.enq ? ", and its enquiries are added to the inbox" : "") + ".", "Move").then(function (ok) {
+      if (!ok) return;
+      btn.disabled = true; btn.classList.add("is-loading");
+      var data = b.content && b.content.data ? clone(b.content.data) : null, jobs = [];
+      // every photo / video kept in this browser goes to Supabase Storage first
+      (data ? data.properties : []).forEach(function (p) {
+        ["images", "videos"].forEach(function (k) {
+          (p[k] || []).forEach(function (src, i) { jobs.push({ p: p, k: k, i: i, src: src }); });
+        });
+        if (p.image && (!p.images || p.images.indexOf(p.image) < 0)) jobs.push({ p: p, k: "image", src: p.image });
+      });
+      jobs = jobs.filter(function (j) { return /^(local:|data:)/.test(j.src); });
+      var done = 0, cache = {};
+      var chain = jobs.reduce(function (c, j) {
+        return c.then(function () {
+          st.textContent = "Uploading photos and videos… " + (done + 1) + " of " + jobs.length;
+          var up = cache[j.src] || (cache[j.src] = (/^local:/.test(j.src) ? TLP_MEDIA.get(j.src) : Promise.resolve(dataUrlBlob(j.src))).then(function (blob) {
+            if (!blob) return null;
+            return direct(blob, (j.p.id || "file") + (j.k === "videos" ? "-video" : ""));
+          }));
+          return up.then(function (url) {
+            done++;
+            if (!url) return;
+            if (j.k === "image") j.p.image = url; else j.p[j.k][j.i] = url;
+          });
+        });
+      }, Promise.resolve());
+      chain.then(function () {
+        if (data) data.properties.forEach(function (p) {
+          ["images", "videos"].forEach(function (k) { if (p[k]) p[k] = p[k].filter(function (x) { return !/^(local:|data:)/.test(x); }); });
+          if (p.images && p.images.length) p.image = p.images[0]; else if (p.image && /^(local:|data:)/.test(p.image)) delete p.image;
+        });
+        if (!(b.content && (b.content.config || data))) return;
+        st.textContent = "Publishing…";
+        return api("publish", { config: b.content.config || undefined, data: data || undefined, shas: S.shas }).then(function (d) { S.shas = d.shas; });
+      }).then(function () {
+        if (!b.enq) return;
+        st.textContent = "Adding enquiries…";
+        return api("import", { items: b.enq }).then(function () { S.enquiries = null; });
+      }).then(function () {
+        try { localStorage.removeItem(DEMO.key); localStorage.removeItem(DEMO.enq); } catch (e) {}
+        if (window.TLP_MEDIA) TLP_MEDIA.clear();
+        return loadContent();
+      }).then(function () {
+        toast("Moved. Everyone now sees this content on the website.");
+        go("dashboard"); refreshEnquiryCount();
+      }).catch(function (e) {
+        btn.disabled = false; btn.classList.remove("is-loading"); st.textContent = "";
+        toast(e.message + " Nothing in this browser was removed, so you can try again.", true);
+      });
+    });
+  }
 
   /* ---------- properties ---------- */
   function viewProperties(v) {
@@ -738,7 +807,24 @@
         var blob = dataUrlBlob(dataUrl);
         return TLP_MEDIA.put(blob).then(function (path) { TLP_MEDIA.remember(path, blob); return path; });
       }
+      if (S.storage === "Supabase") { var b = dataUrlBlob(dataUrl); return direct(b, file.name || "photo").then(function (url) { S.previews[url] = dataUrl; return url; }); }
       return api("upload", { name: slugify(file.name) || "photo", dataUrl: dataUrl }).then(function (r) { S.previews[r.path] = dataUrl; return r.path; });
+    });
+  }
+  /* Supabase: ask the server for a one-time upload link, then send the file straight to Storage */
+  function direct(blob, name, onProgress) {
+    return api("sign", { name: slugify(name) || "file", type: blob.type, size: blob.size }).then(function (d) {
+      return new Promise(function (resolve, reject) {
+        var x = new XMLHttpRequest(), fd = new FormData();
+        fd.append("cacheControl", "31536000");
+        fd.append("", blob, name);
+        x.open("PUT", d.uploadUrl);
+        x.setRequestHeader("x-upsert", "false");
+        if (onProgress && x.upload) x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+        x.onload = function () { if (x.status >= 200 && x.status < 300) resolve(d.url); else reject(new Error("Upload failed (" + x.status + "). Try again.")); };
+        x.onerror = function () { reject(new Error("Upload failed. Check your connection and try again.")); };
+        x.send(fd);
+      });
     });
   }
   var VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
@@ -747,6 +833,12 @@
     if (DEMO.on) {
       if (file.size > 300 * 1024 * 1024) return Promise.reject(new Error("That video is larger than 300 MB. Export a shorter or smaller version and try again."));
       return TLP_MEDIA.put(file).then(function (path) { TLP_MEDIA.remember(path, file); return path; });
+    }
+    if (S.storage === "Supabase") {
+      if (file.size > 50 * 1024 * 1024) return Promise.reject(new Error("That video is larger than 50 MB. Export a shorter or smaller version (720p works well) and try again."));
+      var st = document.getElementById("vd-status");
+      return direct(file, file.name || "video", function (f) { if (st) st.textContent = "Uploading video… " + Math.round(f * 100) + "%"; })
+        .then(function (url) { S.previews[url] = URL.createObjectURL(file); return url; });
     }
     if (file.size > 3 * 1024 * 1024) return Promise.reject(new Error("That video is larger than 3 MB, the most the website can take at the moment. Upload a shorter clip."));
     return new Promise(function (resolve, reject) {
@@ -820,7 +912,7 @@
         a.click();
       });
     });
-    draw();
+    getEnquiries(true).then(draw, draw);   // always fresh when the inbox is opened
   }
   function enquiryCard(x) {
     var wa = "https://wa.me/" + String(x.phone || "").replace(/\D/g, "").replace(/^(\d{10})$/, "91$1") + "?text=" + encodeURIComponent("Hello " + x.name + ", this is Tenkasi Land Promoters about your enquiry.");

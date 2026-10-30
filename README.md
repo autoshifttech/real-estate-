@@ -103,37 +103,54 @@ Until the settings below are added, `/admin/` runs in **demo mode**: sign in wit
 
 Demo mode switches off by itself as soon as the real backend is configured.
 
-### One-time setup
+### One-time setup — Supabase (recommended)
 
-1. **Create a GitHub token** — github.com → your picture → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
-   *Resource owner*: `autoshifttech` · *Repository access*: **Only select repositories** → `real-estate-` · *Permissions → Repository permissions → Contents*: **Read and write** · choose an expiry (note the date — renew the token before it ends). Copy the token.
-2. **Add settings in Vercel** — project → **Settings → Environment Variables**, for *Production* (and *Preview* if you use it):
+Content, photos, videos and enquiries are saved in [Supabase](https://supabase.com) (free plan to start). Changes show on the website within seconds, with no redeploy.
+
+1. **Create the project** — supabase.com → **New project**. Pick the region closest to your buyers (e.g. *Mumbai*), set a database password (keep it safe; the website does not need it).
+2. **Create the tables and the media bucket** — in the project: **SQL Editor → New query**, paste the whole of [`supabase/setup.sql`](supabase/setup.sql), **Run**. It is safe to run again.
+3. **Copy two values** — **Project Settings → API Keys** (or **Data API**):
+   - the **Project URL**, like `https://abcd1234.supabase.co`
+   - the **secret** key (`sb_secret_…`). On older projects use the `service_role` key instead. **Never** put this key in the website code or share it — it can read and change everything.
+4. **Add settings in Vercel** — project → **Settings → Environment Variables**, for *Production* (and *Preview* if you use it):
 
    | Name | Value |
    |---|---|
+   | `SUPABASE_URL` | the Project URL from step 3 |
+   | `SUPABASE_SECRET_KEY` | the secret key from step 3 |
    | `ADMIN_USERNAME` | the name you will sign in with |
    | `ADMIN_PASSWORD` | at least 8 characters; the longer and less guessable, the safer |
-   | `SESSION_SECRET` | a long random string, 32+ characters (e.g. from a password generator). **Never change it later** — it also unlocks saved enquiries |
-   | `GITHUB_TOKEN` | the token from step 1 |
-   | `GITHUB_BRANCH` | *optional* — the branch the site deploys from; defaults to the deployed branch |
+   | `SESSION_SECRET` | a long random string, 32+ characters (e.g. from a password generator) — signs the admin sign-in |
 
-3. **Redeploy** — Deployments → ⋯ → **Redeploy**. Then open `/admin/`.
+5. **Redeploy** — Deployments → ⋯ → **Redeploy**. Open `/admin/` and sign in.
+6. **Move what you added in demo mode** — if you used the admin before this, sign in **in the same browser**: the dashboard shows **Move what you saved in this browser**. It uploads those photos and videos to Supabase, publishes the content and copies the enquiries into the inbox. The first time anyone opens the site or admin, the database is filled with the current site content automatically.
 
 To change the password, edit `ADMIN_PASSWORD` in Vercel and redeploy.
+
+**How it works with Supabase**
+- The website loads the live content from `/api/site` right after the built-in copy in `assets/js/config.js` / `data.js` (used if Supabase can't be reached). Vercel's CDN caches it for 10 seconds.
+- Photos and videos go from the admin straight to the public `media` bucket through one-time upload links the server creates, so videos up to 50 MB work (the free plan's limit per file). Photos are shrunk in the browser first.
+- The tables have row-level security on with no public access; only the server, with the secret key, reads or writes them. Enquiries are never public.
+- Free-plan limits to keep in mind: 500 MB database, 1 GB file storage, 5 GB downloads a month, and a project that has no activity for a week is paused (restore it from the Supabase dashboard). Videos use most of the space and downloads — keep them short (720p) or post them on YouTube.
+
+### Alternative setup — GitHub storage
+
+Without the Supabase settings, the admin can save to this GitHub repository instead (each publish is a commit, Vercel redeploys in about a minute; videos up to 3 MB).
+
+1. **Create a GitHub token** — github.com → your picture → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+   *Resource owner*: `autoshifttech` · *Repository access*: **Only select repositories** → `real-estate-` · *Permissions → Repository permissions → Contents*: **Read and write** · choose an expiry (note the date — renew the token before it ends). Copy the token.
+2. **Add settings in Vercel** — `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `SESSION_SECRET` as above (here **never change `SESSION_SECRET` later** — it also unlocks saved enquiries), plus `GITHUB_TOKEN` (the token from step 1) and optionally `GITHUB_BRANCH` (defaults to the deployed branch).
+3. **Redeploy**.
 
 ### How it is built and kept safe
 
 - The username and password live only in Vercel's settings, never in the code — this repository is public.
-- `api/admin.js` and `api/enquiry.js` are Vercel serverless functions (plain Node, no packages). Shared code is in `api/_lib/`.
+- `api/admin.js`, `api/enquiry.js` and `api/site.js` are Vercel serverless functions (plain Node, no packages). Shared code is in `api/_lib/` (`supabase.js` for the database and storage).
 - Sign-in is checked on the server; the session is a signed, `HttpOnly`, `SameSite=Strict` cookie that lasts 12 hours. Repeated wrong passwords are slowed down and locked out for 15 minutes. Admin requests also need a custom header, which blocks cross-site requests.
 - Everything the admin sends is checked and rebuilt field by field on the server before it is saved (lengths, links must be `https://`, photo types are verified, ids are unique), so a typo can't break the site.
 - If two people edit at once, the second publish is stopped with "someone else changed it — reload" instead of overwriting.
-- **Enquiries contain names and phone numbers, and this repository is public**, so they are encrypted (AES-256-GCM) before saving, on a separate branch `admin-data` that Vercel does not deploy. Only the server, with `SESSION_SECRET`, can read them. Making the GitHub repository private is still recommended.
+- With GitHub storage: **enquiries contain names and phone numbers, and this repository is public**, so they are encrypted (AES-256-GCM) before saving, on a separate branch `admin-data` that Vercel does not deploy. Only the server, with `SESSION_SECRET`, can read them. Making the GitHub repository private is still recommended.
 - Website forms still open WhatsApp as before; the copy saved to the inbox is in addition.
-
-### Moving to Supabase later
-
-Storage sits behind one small interface in `api/_lib/store.js` (`read`, `list`, `commit`, `ensureBranch`), and enquiries behind `api/_lib/enquiries.js` (`add`, `all`, `update`). To switch to Supabase, add a Supabase adapter there (tables for properties, regions, FAQs, settings and enquiries, using a service-role key kept in a Vercel setting). The admin panel and the API actions stay the same.
 
 ### Try it locally
 

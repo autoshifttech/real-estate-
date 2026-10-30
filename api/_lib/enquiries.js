@@ -70,4 +70,13 @@ async function update(id, change) {
   if (!found) throw Object.assign(new Error("Enquiry not found"), { status: 404 });
 }
 
-module.exports = { add, all, update, STATUSES };
+const supa = require("./supabase");
+module.exports = {
+  add: (fields) => (supa.configured() ? supa.addEnquiry(fields) : add(fields)),
+  all: (months) => (supa.configured() ? supa.allEnquiries() : all(months)),
+  update: (id, change) => {
+    if (!/^\d{4}-\d{2}-[a-z0-9]+$/.test(String(id))) throw Object.assign(new Error("Unknown enquiry"), { status: 400 });
+    return supa.configured() ? supa.updateEnquiry(id, change) : update(id, change);
+  },
+  STATUSES
+};
