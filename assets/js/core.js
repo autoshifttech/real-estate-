@@ -1,6 +1,6 @@
 /*
  * Shared site behaviour: header, footer, menu, chat button, reveal-on-scroll,
- * listing cards, price formatting and enquiry forms.
+ * listing cards, price formatting and WhatsApp links.
  */
 (function () {
   "use strict";
@@ -453,86 +453,6 @@
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { done("Link copied"); }, function () { window.prompt("Copy this link", url); });
     else window.prompt("Copy this link", url);
   });
-
-  /* ---------- enquiry forms ---------- */
-
-  function fieldErr(input, msg) {
-    var wrap = input.closest(".field"), err = wrap && qs(".err", wrap);
-    input.setAttribute("aria-invalid", msg ? "true" : "false");
-    if (err) err.textContent = msg || "";
-  }
-
-  TLP.bindForm = function (form, context) {
-    if (!form) return;
-    var status = qs(".form-status", form);
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var ok = true, data = {};
-      qsa("input, select, textarea", form).forEach(function (el) { if (el.name && !el.disabled) data[el.name] = el.value.trim(); });
-      var name = form.elements.name, phone = form.elements.phone;
-      if (name) { fieldErr(name, data.name ? "" : "Please tell us your name."); ok = ok && !!data.name; }
-      if (phone) {
-        var digits = (data.phone || "").replace(/\D/g, "");
-        var bad = digits.length < 10 ? "Please enter a valid phone number." : "";
-        fieldErr(phone, bad); ok = ok && !bad;
-      }
-      if (!ok) { var first = qs('[aria-invalid="true"]', form); if (first) first.focus(); return; }
-
-      var ctx = typeof context === "function" ? context() : (context || {});
-      var intent = data.intent || ctx.intent || "buy";
-      var lines = [intent === "sell" ? "Hi! I'd like to sell my property." : "Hi! I'd like to book a site visit."];
-      if (ctx.property) lines.push("Property: " + ctx.property);
-      if (data.plot) lines.push("Plot: " + data.plot);
-      lines.push("Name: " + data.name, "Phone: " + data.phone);
-      if (data.region) lines.push((intent === "sell" ? "Location: " : "Region: ") + data.region);
-      if (data.type) lines.push("Type: " + data.type);
-      if (data.budget) lines.push("Budget: " + data.budget);
-      if (data.area) lines.push("Area: " + data.area);
-      if (data.date) lines.push("Preferred date: " + data.date);
-      if (data.message) lines.push("Message: " + data.message);
-      var text = lines.join("\n");
-
-      // save the enquiry for the admin inbox (works on the live site; the WhatsApp step below still runs)
-      if (/^https?:$/.test(window.location.protocol)) {
-        var rec = { intent: intent, property: ctx.property || "", page: window.location.pathname };
-        ["name", "phone", "plot", "region", "type", "budget", "area", "date", "message", "website"].forEach(function (k) { if (data[k]) rec[k] = data[k]; });
-        // when the backend is not set up yet (demo), keep the enquiry in this browser for the demo inbox
-        var keepLocal = function () {
-          try {
-            var now = new Date(), list = JSON.parse(window.localStorage.getItem("tlp-demo-enquiries") || "[]");
-            list.unshift(Object.assign({ id: now.toISOString().slice(0, 7) + "-" + now.getTime().toString(36), at: now.toISOString(), status: "new" }, rec));
-            window.localStorage.setItem("tlp-demo-enquiries", JSON.stringify(list.slice(0, 200)));
-          } catch (e) { /* storage unavailable */ }
-        };
-        try {
-          fetch("/api/enquiry", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) })
-            .then(function (r) { if ([404, 405, 501, 503].indexOf(r.status) >= 0) keepLocal(); }, keepLocal);
-        } catch (e) { keepLocal(); }
-      }
-
-      function show(msg, isErr) {
-        if (!status) return;
-        status.textContent = msg; status.classList.add("is-shown"); status.classList.toggle("is-error", !!isErr);
-      }
-      if (CFG.formEndpoint) {
-        var btn = qs('[type="submit"]', form);
-        if (btn) { btn.disabled = true; btn.classList.add("is-loading"); btn.setAttribute("aria-busy", "true"); }
-        fetch(CFG.formEndpoint, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ message: text, data: data, context: ctx }) })
-          .then(function (res) { if (!res.ok) throw new Error(res.status); show("Thank you — we have your details and will call you shortly."); form.reset(); })
-          .catch(function () { show("We couldn't send the form. Opening WhatsApp instead…", true); window.open(waLink(text), "_blank", "noopener"); })
-          .then(function () { if (btn) { btn.disabled = false; btn.classList.remove("is-loading"); btn.removeAttribute("aria-busy"); } });
-      } else {
-        window.open(waLink(text), "_blank", "noopener");
-        show("Opening WhatsApp with your message. Just press send — we'll reply shortly.");
-      }
-    });
-  };
-
-  TLP.regionOptions = function (selected) {
-    return '<option value="">Any region</option>' + DATA.regions.map(function (r) {
-      return '<option value="' + esc(r.name) + '"' + (selected === r.id ? " selected" : "") + ">" + esc(r.name) + "</option>";
-    }).join("");
-  };
 
   /* ---------- config bindings ----------
    * data-cfg="phone|email|address|hours|stats.followers…"  -> sets the element's text

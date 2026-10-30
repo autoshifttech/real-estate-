@@ -1,6 +1,6 @@
 /*
  * Property page: property.html?id=<id>
- * Hero, spec bar, description, plot chooser (for layouts), nearby places, map, enquiry and similar listings.
+ * Hero, spec bar, description, plot chooser (for layouts), nearby places, map, WhatsApp booking and similar listings.
  */
 (function () {
   "use strict";
@@ -97,7 +97,7 @@
   /* plot chooser */
   if (p.layout) plots(p);
 
-  /* phones: price, WhatsApp and Call always at hand; hidden while the enquiry form is on screen */
+  /* phones: price, WhatsApp and Call always at hand; hidden while the booking card is on screen */
   var bar = document.createElement("aside");
   bar.className = "buybar";
   bar.setAttribute("aria-label", "Contact us about this property");

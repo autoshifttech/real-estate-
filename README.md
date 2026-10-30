@@ -13,9 +13,9 @@ Every page shares a floating pill navigation bar with dropdowns for Properties, 
 
 | Page | File | What it does |
 |------|------|--------------|
-| Home | `index.html` | Five-scene scroll story with a dawn/dusk toggle, featured listings, regions explorer with a lat/long map, categories, process, sell banner, video section, FAQ, enquiry form |
+| Home | `index.html` | Five-scene scroll story with a dawn/dusk toggle, featured listings, regions explorer with a lat/long map, categories, process, sell banner, video section, FAQ, WhatsApp card |
 | Properties | `properties.html` | Region chips, type / budget / sort filters and search, synced to the URL (`?region=tenkasi&type=farm`) |
-| Property | `property.html?id=…` | Hero, spec bar, highlights, interactive plot chooser for layouts, map, walkthrough links, enquiry form, similar listings |
+| Property | `property.html?id=…` | Hero, spec bar, highlights, interactive plot chooser for layouts, map, walkthrough links, WhatsApp booking card (a plot picked on the layout goes into the message), similar listings |
 | About | `about.html` | Story, four promises, community numbers |
 | Contact | `contact.html` | Buy / sell tabs (`?tab=sell`), contact details, map |
 | 404 | `404.html` | Not-found page (GitHub Pages serves it automatically) |
@@ -38,9 +38,9 @@ Repository → **Settings → Pages** → *Deploy from a branch* → pick the br
 
 ### 1. `assets/js/config.js` — business details
 
-Phone, WhatsApp number, email, office address, opening hours and social links. **The phone, WhatsApp and email are placeholders** (`+91 00000 00000`, `hello@example.com`) and must be replaced. Every header, footer, button and form on the site reads from this file.
+Phone, WhatsApp number, email, office address, opening hours and social links. **The phone, WhatsApp and email are placeholders** (`+91 00000 00000`, `hello@example.com`) and must be replaced. Every header, footer and button on the site reads from this file.
 
-Forms open WhatsApp with the enquiry pre-filled. To receive them by email instead, create a free form endpoint (Formspree, Web3Forms, Getform…) and paste its URL into `formEndpoint`.
+The site has no forms: every "book a visit", "buy" and "sell" button, the floating button and the phone bar open WhatsApp with a message already typed. Set the number and that first message in **Admin → Settings → WhatsApp**.
 
 ### 2. `assets/js/data.js` — listings, regions, FAQs
 
@@ -88,9 +88,9 @@ Sign in at **`https://<your-site>.vercel.app/admin/`** with a username and passw
 
 | Section | What you can do |
 |---|---|
-| Dashboard | Counts, quick actions, latest enquiries |
+| Dashboard | Counts and quick actions |
 | Properties | Add a property with just **photos, an optional video and the social-media caption** (drag and drop files, drag photos to reorder) (English, Tamil or both). `assets/js/caption.js` reads the title, place, region, type, price (₹, lakhs, crores, per cent / per acre), land size, road and approval from the caption and shows a live "On the website" preview; the property page shows the caption itself, with a photo gallery and video player. Edit, duplicate, delete and reorder listings; click the status pill to cycle available / few left / sold; star to feature on the home page |
-| Enquiries | Every form sent on the website, newest first; New / Contacted / Closed; call or WhatsApp in one tap; delete; export CSV |
+| Enquiries | Switched off while the site sends visitors to WhatsApp (`SHOW_ENQUIRIES` in `admin/admin.js` brings the inbox back) |
 | Regions | Name, Tamil name, description, image, map position; add, reorder, delete |
 | Steps & FAQs | The "How it works" steps and the FAQ list |
 | Settings | Phone, WhatsApp, email, address, hours, map location, brand names, social links, the numbers shown on the site |
@@ -99,13 +99,13 @@ Edits are a **draft** until you press **Publish to website**. Publishing saves o
 
 ### Demo mode (before the backend is connected)
 
-Until the settings below are added, `/admin/` runs in **demo mode**: sign in with the demo account you were given, and everything you publish (properties, photos, settings, regions, FAQs) is saved **in that browser only**, and the website shows those changes in that same browser, Photos and videos are kept in that browser's IndexedDB (`assets/js/media.js`). Website enquiries sent from that browser appear in the demo inbox. Other visitors always see the normal site, so demo sign-ins can't change the live website. The demo password is stored only as a SHA-256 hash in `admin/admin.js`. Clear it from **Settings → Restore original content**.
+Until the settings below are added, `/admin/` runs in **demo mode**: sign in with the demo account you were given, and everything you publish (properties, photos, settings, regions, FAQs) is saved **in that browser only**, and the website shows those changes in that same browser, Photos and videos are kept in that browser's IndexedDB (`assets/js/media.js`). Other visitors always see the normal site, so demo sign-ins can't change the live website. The demo password is stored only as a SHA-256 hash in `admin/admin.js`. Clear it from **Settings → Restore original content**.
 
 Demo mode switches off by itself as soon as the real backend is configured.
 
 ### One-time setup — Supabase (recommended)
 
-Content, photos, videos and enquiries are saved in [Supabase](https://supabase.com) (free plan to start). Changes show on the website within seconds, with no redeploy.
+Content, photos and videos are saved in [Supabase](https://supabase.com) (free plan to start). Changes show on the website within seconds, with no redeploy.
 
 1. **Create the project** — supabase.com → **New project**. Pick the region closest to your buyers (e.g. *Mumbai*), set a database password (keep it safe; the website does not need it).
 2. **Create the tables and the media bucket** — in the project: **SQL Editor → New query**, paste the whole of [`supabase/setup.sql`](supabase/setup.sql), **Run**. It is safe to run again.
@@ -123,7 +123,7 @@ Content, photos, videos and enquiries are saved in [Supabase](https://supabase.c
    | `SESSION_SECRET` | a long random string, 32+ characters (e.g. from a password generator) — signs the admin sign-in |
 
 5. **Redeploy** — Deployments → ⋯ → **Redeploy**. Open `/admin/` and sign in.
-6. **Move what you added in demo mode** — if you used the admin before this, sign in **in the same browser**: the dashboard shows **Move what you saved in this browser**. It uploads those photos and videos to Supabase, publishes the content and copies the enquiries into the inbox. The first time anyone opens the site or admin, the database is filled with the current site content automatically.
+6. **Move what you added in demo mode** — if you used the admin before this, sign in **in the same browser**: the dashboard shows **Move what you saved in this browser**. It uploads those photos and videos to Supabase, publishes the content and keeps any old enquiries in the database. The first time anyone opens the site or admin, the database is filled with the current site content automatically.
 
 To change the password, edit `ADMIN_PASSWORD` in Vercel and redeploy.
 
@@ -150,7 +150,6 @@ Without the Supabase settings, the admin can save to this GitHub repository inst
 - Everything the admin sends is checked and rebuilt field by field on the server before it is saved (lengths, links must be `https://`, photo types are verified, ids are unique), so a typo can't break the site.
 - If two people edit at once, the second publish is stopped with "someone else changed it — reload" instead of overwriting.
 - With GitHub storage: **enquiries contain names and phone numbers, and this repository is public**, so they are encrypted (AES-256-GCM) before saving, on a separate branch `admin-data` that Vercel does not deploy. Only the server, with `SESSION_SECRET`, can read them. Making the GitHub repository private is still recommended.
-- Website forms still open WhatsApp as before; the copy saved to the inbox is in addition.
 
 ### Try it locally
 
@@ -175,7 +174,7 @@ assets/
   js/config.js      business details  (edited by the admin panel)
   js/data.js        regions, listings, process, FAQs  (edited by the admin panel)
   js/art.js         SVG landscape generator
-  js/core.js        header, footer, menu, chat button, cards, forms
+  js/core.js        header, footer, menu, WhatsApp button, cards
   js/home.js        scroll story, regions explorer, process line
   js/listings.js    properties filters
   js/property.js    property page, gallery and plot chooser
@@ -188,4 +187,4 @@ docs/design-system.md
 
 ## Accessibility
 
-Keyboard navigation throughout (skip link, menu, story arrows, region tabs with arrow keys, plot chooser with arrow keys / Enter, buy-sell tabs), visible focus rings, `prefers-reduced-motion` support, form errors announced to screen readers and not signalled by colour alone. Every page passes an axe-core WCAG 2.1 AA audit.
+Keyboard navigation throughout (skip link, menu, region tabs with arrow keys, plot chooser with arrow keys / Enter), visible focus rings and `prefers-reduced-motion` support. Every page passes an axe-core WCAG 2.1 AA audit.

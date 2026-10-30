@@ -123,7 +123,7 @@
         var draw = still ? 1 : clamp((t + 0.55) / 0.85, 0, 1);
         for (var k = 0; k < s.gold.length; k++) s.gold[k].style.strokeDashoffset = (1 - draw).toFixed(4);
         if (s.spark && s.core && s.len) {
-          var on = draw > 0.01 && draw < 0.99;
+          var on = moving && draw > 0.01 && draw < 0.99;   // only while scrolling, never parked mid-line
           s.spark.style.opacity = on ? 1 : 0;
           if (on) {
             var pt = s.core.getPointAtLength(s.len * draw);
@@ -164,7 +164,13 @@
     // let the letters animate in once the page (and the loader, if shown) is out of the way
     var loading = qs("#loader:not(.is-done)");
     setTimeout(function () { ready = true; frame(); }, loading ? 1500 : 120);
-    window.addEventListener("scroll", request, { passive: true });
+    // the spark travels along the boundary while the page scrolls, then fades out
+    var moving = false, idle = 0;
+    window.addEventListener("scroll", function () {
+      moving = true; clearTimeout(idle);
+      idle = setTimeout(function () { moving = false; request(); }, 450);
+      request();
+    }, { passive: true });
     window.addEventListener("resize", function () { measure(); request(); });
     window.addEventListener("load", function () { measure(); request(); });
   }
@@ -423,13 +429,6 @@
     });
   }
 
-  function form() {
-    var f = qs("#home-form");
-    if (!f) return;
-    f.elements.region.innerHTML = TLP.regionOptions();
-    f.elements.budget.innerHTML = '<option value="">Any budget</option>' + DATA.budgets.map(function (b) { return '<option value="' + esc(b.label) + '">' + esc(b.label) + "</option>"; }).join("");
-    TLP.bindForm(f);
-  }
 
   /* the WhatsApp button waits until the opening scenes have been scrolled past */
   function waAfterHero() {
@@ -450,6 +449,5 @@
   processLine();
   reels();
   faq();
-  form();
   TLP.observe();
 })();

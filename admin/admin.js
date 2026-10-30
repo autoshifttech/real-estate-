@@ -224,6 +224,9 @@
   }
 
   /* ---------- shell ---------- */
+  /* The website now sends every visitor to WhatsApp, so the enquiries inbox is switched off.
+     Set to true to bring back the Enquiries tab and the dashboard panels (the code is kept). */
+  var SHOW_ENQUIRIES = false;
   var NAV = [
     ["dashboard", "Dashboard", "home"], ["properties", "Properties", "list"], ["enquiries", "Enquiries", "inbox"],
     ["regions", "Regions", "map"], ["content", "Steps & FAQs", "help"], ["settings", "Settings", "cog"]
@@ -233,7 +236,7 @@
   function renderShell() {
     app.innerHTML = '<div class="shell"><header class="gbar"><div class="gbar-inner glass">' +
       '<a class="brand" href="../index.html" target="_blank" rel="noopener" aria-label="Tenkasi admin — open the website">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
-      '<nav class="gtabs" aria-label="Admin"><span class="gtab-pill" aria-hidden="true"></span>' + NAV.map(function (n) { return '<button type="button" class="gtab" data-view="' + n[0] + '">' + n[1] + (n[0] === "enquiries" ? '<span class="count" id="new-count" hidden></span>' : "") + "</button>"; }).join("") + "</nav>" +
+      '<nav class="gtabs" aria-label="Admin"><span class="gtab-pill" aria-hidden="true"></span>' + NAV.filter(function (n) { return SHOW_ENQUIRIES || n[0] !== "enquiries"; }).map(function (n) { return '<button type="button" class="gtab" data-view="' + n[0] + '">' + n[1] + (n[0] === "enquiries" ? '<span class="count" id="new-count" hidden></span>' : "") + "</button>"; }).join("") + "</nav>" +
       '<div class="gbar-end"><a class="gbtn" href="../index.html" target="_blank" rel="noopener" aria-label="View website" title="View website">' + icon("ext") + '</a><button type="button" class="gbtn" id="logout" aria-label="Sign out (' + esc(S.user) + ')" title="Sign out">' + icon("out") + "</button></div>" +
       "</div></header>" +
       '<div class="main"><div class="pagehead"><h1 id="title"></h1><div class="publish" id="publish"></div></div><main class="content" id="view"></main></div></div>';
@@ -246,8 +249,8 @@
       if (isDirty()) confirmBox("Sign out?", "You have unpublished changes. They will be lost.", "Sign out", true).then(function (ok) { if (ok) leave(); });
       else leave();
     });
-    go(S.view === "editor" ? "properties" : S.view);
-    refreshEnquiryCount();
+    go(S.view === "editor" || (!SHOW_ENQUIRIES && S.view === "enquiries") ? "properties" : S.view);
+    if (SHOW_ENQUIRIES) refreshEnquiryCount();
   }
 
   /* the glass droplet glides to the current tab, stretching a little as it moves */
@@ -325,6 +328,7 @@
   }
 
   function go(view) {
+    if (view === "enquiries" && !SHOW_ENQUIRIES) view = "dashboard";
     S.view = view;
     $$(".gtabs [data-view]").forEach(function (b) { if (b.dataset.view === (view === "editor" ? "properties" : view)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     movePill();
@@ -379,21 +383,21 @@
     var count = function (f) { return P.filter(f).length; };
     v.innerHTML = '<div class="kpis">' +
       kpi(P.length, "Properties listed") + kpi(count(function (p) { return p.status !== "sold"; }), "Available now") +
-      kpi(count(function (p) { return p.featured; }), "Featured on home page") + kpi('<span id="kpi-new">…</span>', "New enquiries") + "</div>" +
+      kpi(count(function (p) { return p.featured; }), "Featured on home page") + (SHOW_ENQUIRIES ? kpi('<span id="kpi-new">…</span>', "New enquiries") : kpi(count(function (p) { return p.status === "sold"; }), "Sold out")) + "</div>" +
       '<section class="panel"><h2>Quick actions</h2><p class="hint">Changes are saved as a draft. Press <b>Publish to website</b> at the top when you are ready.</p><div class="quick">' +
       '<button class="btn btn-primary" data-act="add">' + icon("plus") + "Add a property</button>" +
-      '<button class="btn btn-light" data-go="enquiries">' + icon("inbox") + "Open enquiries</button>" +
+      (SHOW_ENQUIRIES ? '<button class="btn btn-light" data-go="enquiries">' + icon("inbox") + "Open enquiries</button>" : "") +
       '<button class="btn btn-light" data-go="settings">' + icon("cog") + "Phone, WhatsApp & links</button>" +
       '<a class="btn btn-light" href="../index.html" target="_blank" rel="noopener">' + icon("ext") + "View website</a></div></section>" +
-      (!DEMO.on && S.storage === "Supabase" && browserData() ? '<section class="panel move-panel" id="move"><h2>Move what you saved in this browser</h2><p class="hint">Before the database was connected, your changes' + (browserData().enq ? ", photos and enquiries" : " and photos") + ' were kept in this browser only. Move them to the database so everyone sees them.</p><div class="quick"><button class="btn btn-primary" id="move-go">Move to the database</button><button class="btn btn-light" id="move-skip">Not now</button></div><p class="media-status" id="move-st" aria-live="polite"></p></section>' : "") +
-      '<section class="panel"><div class="panel-head"><h2>Latest enquiries</h2><button class="btn btn-light btn-sm" data-go="enquiries">See all</button></div><div id="dash-enq" class="rows"><p class="muted">Loading…</p></div></section>';
+      (!DEMO.on && S.storage === "Supabase" && browserData() ? '<section class="panel move-panel" id="move"><h2>Move what you saved in this browser</h2><p class="hint">Before the database was connected, your changes and photos were kept in this browser only. Move them to the database so everyone sees them.</p><div class="quick"><button class="btn btn-primary" id="move-go">Move to the database</button><button class="btn btn-light" id="move-skip">Not now</button></div><p class="media-status" id="move-st" aria-live="polite"></p></section>' : "") +
+      (SHOW_ENQUIRIES ? '<section class="panel"><div class="panel-head"><h2>Latest enquiries</h2><button class="btn btn-light btn-sm" data-go="enquiries">See all</button></div><div id="dash-enq" class="rows"><p class="muted">Loading…</p></div></section>' : "");
     $$("[data-go]", v).forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.go); }); });
     $("[data-act=add]", v).addEventListener("click", function () { openEditor(null); });
     if ($("#move", v)) {
       $("#move-skip").addEventListener("click", function () { $("#move").remove(); });
       $("#move-go").addEventListener("click", moveBrowserData);
     }
-    getEnquiries(true).then(function (items) {
+    if (SHOW_ENQUIRIES) getEnquiries(true).then(function (items) {
       var box = $("#dash-enq");
       if (!box) return;
       var latest = items.slice(0, 5);
@@ -412,7 +416,7 @@
   function moveBrowserData() {
     var b = browserData(), st = $("#move-st"), btn = $("#move-go");
     if (!b) return;
-    confirmBox("Move to the database?", "What you published in this browser replaces the content on the website" + (b.enq ? ", and its enquiries are added to the inbox" : "") + ".", "Move").then(function (ok) {
+    confirmBox("Move to the database?", "What you published in this browser replaces the content on the website.", "Move").then(function (ok) {
       if (!ok) return;
       btn.disabled = true; btn.classList.add("is-loading");
       var data = b.content && b.content.data ? clone(b.content.data) : null, jobs = [];
@@ -457,7 +461,7 @@
         return loadContent();
       }).then(function () {
         toast("Moved. Everyone now sees this content on the website.");
-        go("dashboard"); refreshEnquiryCount();
+        go("dashboard"); if (SHOW_ENQUIRIES) refreshEnquiryCount();
       }).catch(function (e) {
         btn.disabled = false; btn.classList.remove("is-loading"); st.textContent = "";
         toast(e.message + " Nothing in this browser was removed, so you can try again.", true);

@@ -1255,4 +1255,4 @@ a.contact-item:hover { border-color: var(--color-6); }
   .has-buybar .chat { display: none; }
 }
 @media (max-width: 359px) { .buybar-btn span { display: none; } .buybar-btn { padding: 0; width: 44px; justify-content: center; } }
-
+.story .gold-spark { transition: opacity 0.4s var(--ease-standard); }
