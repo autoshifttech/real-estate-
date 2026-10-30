@@ -24,8 +24,17 @@ function configError() {
   if (!base() && !key()) return null;   // not using Supabase
   if (!base()) return "Missing setting in Vercel: SUPABASE_URL";
   if (!key()) return "Missing setting in Vercel: SUPABASE_SECRET_KEY";
+  const role = keyRole(key());
+  if (role === "publishable" || role === "anon") return "SUPABASE_SECRET_KEY holds the " + (role === "anon" ? "anon" : "publishable") + " key. Use the secret key (sb_secret_…) or the service_role key from Supabase → Project Settings → API Keys, then redeploy";
   if (!/^https:\/\/[a-z0-9.-]+$/i.test(base()) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base())) return "SUPABASE_URL should look like https://abcd1234.supabase.co";
   return null;
+}
+
+/* which kind of key this is: new keys say so in their prefix, legacy keys are JWTs with a role */
+function keyRole(k) {
+  if (/^sb_publishable_/.test(k)) return "publishable";
+  if (/^sb_secret_/.test(k)) return "secret";
+  try { return JSON.parse(Buffer.from(String(k).split(".")[1], "base64url").toString("utf8")).role || ""; } catch (e) { return ""; }
 }
 
 function headers(extra) {
@@ -47,7 +56,8 @@ async function call(method, url, body, extra, timeoutMs) {
   try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
   if (!res.ok) {
     const msg = data && (data.message || data.error_description || data.error || data.hint) || res.status;
-    const hint = /relation .* does not exist|schema cache/i.test(String(msg)) ? " — run supabase/setup.sql in the Supabase SQL editor" : "";
+    const hint = /relation .* does not exist|schema cache/i.test(String(msg)) ? " — run supabase/setup.sql in the Supabase SQL editor"
+      : /permission denied/i.test(String(msg)) ? " — check that SUPABASE_SECRET_KEY is the secret (sb_secret_…) or service_role key, and run the latest supabase/setup.sql again" : "";
     throw Object.assign(new Error("Supabase: " + msg + hint), { status: res.status === 401 || res.status === 403 ? 502 : res.status >= 500 ? 502 : res.status });
   }
   return data;

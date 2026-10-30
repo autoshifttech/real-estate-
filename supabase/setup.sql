@@ -25,6 +25,9 @@ create index if not exists enquiries_created_at on public.enquiries (created_at 
 alter table public.site_content enable row level security;
 alter table public.enquiries enable row level security;
 revoke all on public.site_content, public.enquiries from anon, authenticated;
+-- the server's role needs these explicitly on projects that don't grant new tables automatically
+grant usage on schema public to service_role;
+grant select, insert, update, delete on public.site_content, public.enquiries to service_role;
 
 -- Photos and videos: a public bucket (anyone can view files, which the website needs).
 -- Uploads only happen through one-time links the admin server creates, never with the public key.
