@@ -22,7 +22,7 @@ module.exports = async function (req, res) {
   }
   try {
     const c = await supa.readContent(4000);
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=10, stale-while-revalidate=600");
+    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=5, stale-while-revalidate=30");
     res.end("window.TLP_CONFIG = " + js(c.config) + ";\nwindow.TLP_DATA = " + js(c.data) + ";\nwindow.TLP_LIVE = true;\n");
   } catch (e) {
     console.error("site", e);

@@ -180,7 +180,11 @@
   function featured() {
     var rail = qs("#featured-rail");
     if (!rail) return;
-    rail.innerHTML = DATA.properties.filter(function (p) { return p.featured; }).map(TLP.card).join("");
+    // featured listings; if none are starred yet, the newest available ones
+    var list = DATA.properties.filter(function (p) { return p.featured; });
+    if (!list.length) list = DATA.properties.filter(function (p) { return p.status !== "sold"; }).slice(0, 6);
+    if (!list.length) { qs("#featured").hidden = true; return; }
+    rail.innerHTML = list.map(TLP.card).join("");
     TLP.observe(rail);
     qsa("[data-rail]").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -440,6 +444,12 @@
     window.addEventListener("resize", check);
     check();
   }
+
+  /* links to a property written into the page: send them to the listings if that property is gone */
+  qsa('a[href^="property.html?id="]').forEach(function (a) {
+    var id = new URLSearchParams(a.getAttribute("href").split("?")[1]).get("id");
+    if (!U.property(id)) { a.setAttribute("href", "properties.html"); var t = qs("span", a); if (t) t.textContent = "View properties"; }
+  });
 
   story();
   waAfterHero();

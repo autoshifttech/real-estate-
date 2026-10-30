@@ -521,17 +521,33 @@
   }
 
   /* ---------- properties ---------- */
+  /* the example listings the site shipped with (ids from assets/js/data.js) */
+  var SAMPLE_IDS = ["courtallam-meadows", "ilanji-coconut-grove", "sengottai-foothill-farm", "madurai-highway-frontage", "melagaram-ready-house", "palayamkottai-garden-plots", "gangaikondan-palmyra-land", "rajapalayam-mango-orchard", "virudhunagar-nagar-plots", "tiruchendur-road-plots", "poombarai-valley-estate", "ketti-valley-tea-plot", "punalur-riverside-land"];
+  function samples() { return S.data.properties.filter(function (p) { return SAMPLE_IDS.indexOf(p.id) >= 0 && !p.caption; }); }
+
   function viewProperties(v) {
-    var f = S.filter;
+    var f = S.filter, demo = samples();
     v.innerHTML = '<div class="toolbar"><input type="search" id="pq" placeholder="Search properties" aria-label="Search properties" value="' + esc(f.q) + '">' +
       '<select id="pr" aria-label="Filter by region"><option value="">All regions</option>' + S.data.regions.map(function (r) { return '<option value="' + esc(r.id) + '"' + (f.region === r.id ? " selected" : "") + ">" + esc(r.name) + "</option>"; }).join("") + "</select>" +
       '<select id="ps" aria-label="Filter by status"><option value="">Any status</option>' + Object.keys(STATUS).map(function (k) { return '<option value="' + k + '"' + (f.status === k ? " selected" : "") + ">" + STATUS[k] + "</option>"; }).join("") + "</select>" +
       '<button class="btn btn-primary" id="padd">' + icon("plus") + "Add property</button></div>" +
+      (demo.length ? '<section class="panel sample-panel"><div><h2>Example properties</h2><p class="hint">' + demo.length + " of these listings are examples that came with the website. Remove them before adding your real properties.</p></div>" +
+        '<button class="btn btn-danger btn-sm" id="rm-samples">' + icon("trash") + "Remove " + demo.length + " example " + (demo.length === 1 ? "property" : "properties") + "</button></section>" : "") +
       '<p class="muted" style="margin:0;font-size:var(--text-sm)">Order here is the order on the website. Star = featured on the home page.</p><div class="plist" id="plist"></div>';
     $("#pq").addEventListener("input", function (e) { f.q = e.target.value; drawList(); });
     $("#pr").addEventListener("change", function (e) { f.region = e.target.value; drawList(); });
     $("#ps").addEventListener("change", function (e) { f.status = e.target.value; drawList(); });
     $("#padd").addEventListener("click", function () { openEditor(null); });
+    var rm = $("#rm-samples");
+    if (rm) rm.addEventListener("click", function () {
+      confirmBox("Remove the example properties?", demo.length + " example listings will be removed from the website when you publish. Properties you added stay.", "Remove", true).then(function (ok) {
+        if (!ok) return;
+        S.data.properties = S.data.properties.filter(function (p) { return demo.indexOf(p) < 0; });
+        markDirty("data");
+        toast("Examples removed. Press Publish to website to update the site.");
+        go("properties");
+      });
+    });
     drawList();
   }
   function drawList() {

@@ -360,4 +360,6 @@ body.admin {
 #wa-check.is-warn { color: #a15c07; }
 #wa-test svg { width: 18px; height: 18px; }
 #wa-test.is-off { opacity: 0.45; cursor: not-allowed; }
-
+.sample-panel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-7); flex-wrap: wrap; border-color: #f3c4bf; background: #fffaf9; }
+.sample-panel h2 { font-size: var(--text-base); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+.sample-panel .hint { margin: 0; }
