@@ -32,9 +32,11 @@
   function region(id) { return (S.data.regions.filter(function (r) { return r.id === id; })[0] || {}); }
   function typeLabel(id) { var t = S.data.types.filter(function (x) { return x.id === id; })[0]; return t ? t.label : id; }
   var STATUS = { available: "Available", few: "Few left", sold: "Sold out" };
-  function imgFor(p) {
-    if (p.image) return S.previews[p.image] || (p.image.indexOf("data:") === 0 ? p.image : "../" + p.image);
-    return "../assets/img/scenes/" + (p.scene || "plots") + ".webp";
+  var BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  /* src attribute for a property's cover: uploaded photo or the illustration */
+  function coverAttr(p) {
+    var c = (p.images && p.images[0]) || p.image;
+    return c ? mediaAttr(c) : 'src="../assets/img/scenes/' + esc(p.scene || "plots") + '.webp"';
   }
 
   var ICON = {
@@ -131,7 +133,6 @@
       try { lsSet(DEMO.key, cur); } catch (e) { return Promise.reject(e); }
       return wait({ ok: true, shas: {} });
     }
-    if (action === "upload") return wait({ ok: true, path: body.dataUrl });   // the photo itself is kept in the demo content
     if (action === "enquiries") return wait({ ok: true, items: lsGet(DEMO.enq, []) });
     if (action === "enquiry") {
       var items = lsGet(DEMO.enq, []);
@@ -345,15 +346,15 @@
     var q = f.q.trim().toLowerCase();
     var shown = P.map(function (p, i) { return { p: p, i: i }; }).filter(function (x) {
       var p = x.p;
-      return (!f.region || p.region === f.region) && (!f.status || p.status === f.status) && (!q || (p.title + " " + p.location).toLowerCase().indexOf(q) >= 0);
+      return (!f.region || p.region === f.region) && (!f.status || p.status === f.status) && (!q || (p.title + " " + p.location + " " + (p.caption || "")).toLowerCase().indexOf(q) >= 0);
     });
     var filtered = f.q || f.region || f.status;
     box.innerHTML = shown.length ? shown.map(function (x) {
       var p = x.p, i = x.i;
-      return '<div class="prow" data-i="' + i + '"><div class="thumb"><img src="' + esc(imgFor(p)) + '" alt="" loading="lazy"></div>' +
+      return '<div class="prow" data-i="' + i + '"><div class="thumb"><img ' + coverAttr(p) + ' alt="" loading="lazy"></div>' +
         '<div class="prow-main"><b>' + esc(p.title) + "</b><span>" + esc(p.location) + " · " + esc(typeLabel(p.type)) + "</span></div>" +
-        '<span class="price">' + price(p.price) + (p.priceNote === "onwards" ? "+" : "") + "</span>" +
-        '<span class="pill is-' + esc(p.status) + '">' + STATUS[p.status] + "</span>" +
+        '<span class="price">' + (p.price == null ? "On request" : price(p.price) + (p.priceNote === "onwards" ? "+" : p.priceNote && p.priceNote !== "total" ? " " + p.priceNote : "")) + "</span>" +
+        '<button type="button" class="pill pill-btn is-' + esc(p.status) + '" data-a="status" title="Change status" aria-label="Status: ' + STATUS[p.status] + '. Change status">' + STATUS[p.status] + "</button>" +
         '<div class="prow-actions">' +
         '<button class="icon-only' + (p.featured ? " is-on" : "") + '" data-a="star" aria-pressed="' + !!p.featured + '" aria-label="Featured on home page" title="Featured on home page">' + icon("star") + "</button>" +
         '<button class="icon-only" data-a="up" aria-label="Move up" title="Move up"' + (i === 0 || filtered ? " disabled" : "") + ">" + icon("up") + "</button>" +
@@ -369,6 +370,7 @@
         var a = b ? b.dataset.a : "edit";
         if (b && b.disabled) return;
         if (a === "edit") return openEditor(i);
+        if (a === "status") { var order = ["available", "few", "sold"]; P[i].status = order[(order.indexOf(P[i].status) + 1) % 3]; markDirty("data"); drawList(); var sb = $('.prow[data-i="' + i + '"] [data-a="status"]'); if (sb) sb.focus(); return; }
         if (a === "star") { P[i].featured = !P[i].featured; markDirty("data"); return drawList(); }
         if (a === "up" || a === "down") { var j = a === "up" ? i - 1 : i + 1; var t = P[i]; P[i] = P[j]; P[j] = t; markDirty("data"); drawList(); var nb = $('.prow[data-i="' + j + '"] [data-a="' + a + '"]'); if (nb && !nb.disabled) nb.focus(); return; }
         if (a === "copy") {
@@ -390,138 +392,135 @@
     return id;
   }
 
-  /* ---------- property editor ---------- */
+  /* ---------- property editor ----------
+   * Only photos, videos and the caption posted on social media. Everything the website shows
+   * (title, place, region, type, price, size…) is read from the caption by assets/js/caption.js.
+   */
   var TYPE_SCENE = { plot: "plots", farm: "farm", estate: "hills", commercial: "highway", house: "house" };
   var TYPE_ART = { plot: "plan", farm: "farm", estate: "hills", commercial: "highway", house: "plan" };
+  var MAX_PHOTOS = 20, MAX_VIDEOS = 3;
+
+  /* a caption for properties added before captions existed, so they can be edited the same way */
+  function captionFrom(p) {
+    var L = [p.title, ""];
+    if (p.location) L.push("📍 Location: " + p.location, "");
+    if (p.summary) L.push(p.summary, "");
+    if (p.description) L.push(p.description, "");
+    if (p.highlights && p.highlights.length) L.push("✨ Highlights:", "", p.highlights.map(function (h) { return "✅ " + h; }).join("\n"), "");
+    if (p.area) L.push("📐 Area: " + p.area);
+    if (p.approval) L.push("📄 Approval: " + p.approval);
+    if (p.road) L.push("🛣️ Road: " + p.road);
+    if (p.price != null && p.price !== "") L.push("💰 Price: " + price(p.price).replace(/ L$/, " Lakhs") + (p.priceNote && p.priceNote !== "total" ? " " + p.priceNote : ""));
+    return L.join("\n").trim();
+  }
 
   function openEditor(index) {
-    var p;
-    if (index == null) {
-      var t = S.data.types[0].id;
-      p = { id: "", title: "", region: S.data.regions[0].id, type: t, location: "", price: "", priceNote: "total", area: "", approval: "", facing: "", road: "",
-        status: "available", featured: false, summary: "", description: "", highlights: [], nearby: [], scene: TYPE_SCENE[t], art: { kind: TYPE_ART[t], seed: 1 + Math.floor(Math.random() * 40) } };
-    } else p = clone(S.data.properties[index]);
-    p.highlights = p.highlights || []; p.nearby = p.nearby || [];
-    S.edit = { index: index, p: p, autoId: index == null };
+    var p = index == null ? { status: "available", featured: false } : clone(S.data.properties[index]);
+    p.images = (p.images && p.images.slice()) || (p.image ? [p.image] : []);
+    p.videos = (p.videos && p.videos.slice()) || [];
+    if (p.caption == null) p.caption = index == null ? "" : captionFrom(p);
+    S.edit = { index: index, p: p };
     go("editor");
   }
 
+  function mediaAttr(path, isVideo) {
+    if (window.TLP_MEDIA && TLP_MEDIA.isLocal(path)) return (isVideo ? "" : 'src="' + BLANK + '" ') + 'data-local="' + esc(path) + '"';
+    return 'src="' + esc(S.previews[path] || (/^(data:|blob:|https?:)/.test(path) ? path : "../" + path)) + '"';
+  }
+
   function viewEditor(v) {
-    var E = S.edit, p = E.p;
-    var opt = function (list, val) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === val ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join(""); };
-    var L = p.layout;
+    var E = S.edit, p = E.p, isNew = E.index == null;
     v.innerHTML =
-      '<div class="editor-head"><button class="back" type="button" id="e-back">' + icon("back") + 'Back to properties</button><div class="actions-row"><button class="btn btn-light" id="e-cancel">Cancel</button><button class="btn btn-primary" id="e-save">' + (E.index == null ? "Add property" : "Save changes") + "</button></div></div>" +
+      '<div class="editor-head"><button class="back" type="button" id="e-back">' + icon("back") + 'Back to properties</button><div class="actions-row"><button class="btn btn-light" id="e-cancel">Cancel</button><button class="btn btn-primary" id="e-save">' + (isNew ? "Add property" : "Save changes") + "</button></div></div>" +
       '<p class="alert" id="e-err" hidden></p>' +
-      '<section class="panel"><h2>Basic details</h2><p class="hint">Fields marked <span class="req">*</span> are required.</p><div class="grid-2">' +
-      fld("title", "Title", p.title, { req: 1, span: 1, max: 80 }) +
-      fld("id", "Web address", p.id, { req: 1, hint: "Used in the link: property.html?id=…  Lowercase letters, numbers and dashes." }) +
-      fld("location", "Location", p.location, { req: 1, hint: "Example: Courtallam Road, Tenkasi" }) +
-      sel("region", "Region", opt(S.data.regions.map(function (r) { return [r.id, r.name]; }), p.region), 1) +
-      sel("type", "Type", opt(S.data.types.map(function (t) { return [t.id, t.label.replace(/s$/, "")]; }), p.type), 1) +
-      sel("status", "Status", opt([["available", "Available"], ["few", "Few left"], ["sold", "Sold out"]], p.status)) +
-      '<div class="field"><span class="label-like" style="font-family:var(--font-display);font-size:var(--text-sm);font-weight:500">Home page</span><label class="switch"><input type="checkbox" id="f-featured"' + (p.featured ? " checked" : "") + "> Show in Featured</label></div>" +
-      "</div></section>" +
-      '<section class="panel"><h2>Price & size</h2><div class="grid-3">' +
-      fld("price", "Price (₹)", p.price, { req: 1, type: "number", hint: '<span class="price-preview" id="price-prev">' + (p.price !== "" ? price(p.price) : "") + "</span>" }) +
-      sel("priceNote", "Price shown as", opt([["total", "Total price"], ["onwards", "Onwards (from)"], ["per cent", "Per cent"], ["per acre", "Per acre"], ["per sq.ft", "Per sq.ft"]], p.priceNote)) +
-      fld("area", "Area", p.area, { req: 1, hint: "Example: 1,200 – 2,400 sq.ft or 2.5 acres" }) +
-      fld("approval", "Approval / title", p.approval, { req: 1, hint: "Example: DTCP approved, Patta land · clear title" }) +
-      fld("facing", "Facing", p.facing, {}) +
-      fld("road", "Road access", p.road, { hint: "Example: 30 ft blacktop" }) +
-      "</div></section>" +
-      '<section class="panel"><h2>Photo</h2><p class="hint">Upload a real photo (it replaces the illustration), or choose one of the illustrations.</p><div class="media-row">' +
-      '<div><div class="media-preview"><img id="m-img" src="' + esc(imgFor(p)) + '" alt="Preview"><span class="pill is-plain tag" id="m-tag">' + (p.image ? "Photo" : "Illustration") + "</span></div>" +
-      '<div class="upload-row" style="margin-top:var(--space-5)"><label class="btn btn-primary btn-sm" for="m-file" style="cursor:pointer">Upload photo</label><input type="file" id="m-file" accept="image/jpeg,image/png,image/webp" hidden>' +
-      '<button class="btn btn-light btn-sm" id="m-remove"' + (p.image ? "" : " hidden") + ">Remove photo</button></div><p class=\"muted\" id=\"m-status\" style=\"font-size:var(--text-xs);margin:var(--space-3) 0 0\"></p></div>" +
-      '<div><b style="font-family:var(--font-display);font-size:var(--text-sm)">Illustration</b><div class="scene-grid">' + S.scenes.map(function (s) {
-        return '<button type="button" class="scene-opt" data-scene="' + s + '" aria-pressed="' + (p.scene === s) + '" aria-label="Illustration ' + s + '"><img src="../assets/img/scenes/' + s + '.webp" alt="" loading="lazy"><span>' + s + "</span></button>";
-      }).join("") + "</div></div></div></section>" +
-      '<section class="panel"><h2>Description</h2><div class="grid-2">' +
-      '<div class="field span-2"><label for="f-summary">Short summary <span class="req">*</span><span class="counter" id="sum-c"></span></label><input id="f-summary" maxlength="220" value="' + esc(p.summary) + '"><small>One sentence shown on cards and search results.</small></div>' +
-      '<div class="field span-2"><label for="f-description">Full description</label><textarea id="f-description" rows="6" maxlength="3000">' + esc(p.description) + "</textarea></div>" +
-      "</div></section>" +
-      '<section class="panel"><h2>Highlights</h2><p class="hint">Short points with ticks on the property page.</p><div class="rows" id="hl"></div><button class="btn btn-light btn-sm add-row" id="hl-add" style="margin-top:var(--space-5)">' + icon("plus") + "Add highlight</button></section>" +
-      '<section class="panel"><h2>Location & video</h2><p class="hint">Nearby places and the map pin on the property page.</p><div class="rows" id="nb"></div><button class="btn btn-light btn-sm add-row" id="nb-add" style="margin:var(--space-5) 0 var(--space-9)">' + icon("plus") + "Add nearby place</button>" +
-      '<div class="grid-3">' + fld("lat", "Map latitude", p.coords ? p.coords[0] : "", { type: "number", step: "any", hint: "Example: 8.94" }) + fld("lng", "Map longitude", p.coords ? p.coords[1] : "", { type: "number", step: "any", hint: "Example: 77.28" }) +
-      fld("video", "Video link", p.video || "", { hint: "Instagram or YouTube walkthrough (https://…)" }) + "</div></section>" +
-      '<section class="panel"><h2>Plot layout</h2><p class="hint">For layouts with plots: buyers pick a plot on the property page. Click a plot to switch Available → Booked → Sold.</p>' +
-      '<label class="switch"><input type="checkbox" id="lay-on"' + (L ? " checked" : "") + "> This property has a plot layout</label>" +
-      '<div id="lay"' + (L ? "" : " hidden") + ' style="margin-top:var(--space-7)"><div class="grid-3">' +
-      fld("rows", "Rows", L ? L.rows : 4, { type: "number" }) + fld("cols", "Plots per row", L ? L.cols : 8, { type: "number" }) + fld("plotSize", "Plot size", L ? L.plotSize : "30 × 40 ft", {}) +
-      '</div><div class="quick" style="margin-top:var(--space-5)"><button class="btn btn-light btn-sm" id="lay-free">All available</button><button class="btn btn-light btn-sm" id="lay-sold">All sold</button></div><div class="plot-grid" id="lay-grid"></div><div class="plot-legend" id="lay-legend"></div></div></section>';
+      '<div class="post-editor"><div class="post-col">' +
+      '<section class="panel"><h2>Photos</h2><p class="hint">Add the photos you posted. The first photo is the cover on the website.</p>' +
+      '<div class="media-grid" id="ph-grid"></div><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" multiple hidden><p class="media-status" id="ph-status" aria-live="polite"></p></section>' +
+      '<section class="panel"><h2>Video</h2><p class="hint">Add the reel or walkthrough video (MP4, MOV or WebM).</p>' +
+      '<div class="media-grid is-video" id="vd-grid"></div><input type="file" id="vd-file" accept="video/mp4,video/quicktime,video/webm" hidden><p class="media-status" id="vd-status" aria-live="polite"></p></section>' +
+      '<section class="panel"><div class="field"><label for="f-caption" class="h2-label">Caption <span class="req">*</span><span class="counter" id="cap-c"></span></label>' +
+      '<small style="margin:0 0 var(--space-5)">Paste the same caption you posted on Instagram or Facebook — English, தமிழ் or both. The title, place, price and land size are taken from it.</small>' +
+      '<textarea id="f-caption" rows="16" maxlength="5000" placeholder="🌴 Beautiful land for sale near Tenkasi!&#10;&#10;📍 Location: Courtallam Road, Tenkasi&#10;&#10;✅ 10 cents onwards&#10;✅ Tar road access&#10;&#10;💰 Price: ₹1,80,000 per cent">' + esc(p.caption) + "</textarea></div></section>" +
+      '</div><aside class="panel post-preview" aria-labelledby="pv-h"><h2 id="pv-h">On the website</h2><div id="pv"></div></aside></div>';
 
-    // inputs
-    var val = function (id) { var el = $("#f-" + id); return el ? el.value : ""; };
-    v.addEventListener("input", function () { var er = $("#e-err"); if (er) er.hidden = true; });
-    $("#f-title").addEventListener("input", function () { if (E.autoId) $("#f-id").value = uniqueId(slugify(val("title"))); });
-    $("#f-id").addEventListener("input", function () { E.autoId = false; });
-    $("#f-price").addEventListener("input", function () { $("#price-prev").textContent = val("price") !== "" ? price(val("price")) : ""; });
-    var sumC = function () { $("#sum-c").textContent = val("summary").length + "/220"; };
-    $("#f-summary").addEventListener("input", sumC); sumC();
-    $("#f-type").addEventListener("change", function () { if (!p.image && E.index == null) setScene(TYPE_SCENE[val("type")]); });
+    var err = $("#e-err"), cap = $("#f-caption");
+    v.addEventListener("input", function () { err.hidden = true; });
 
-    // media
-    function setScene(s) { p.scene = s; $$(".scene-opt").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.scene === s)); }); if (!p.image) $("#m-img").src = imgFor(p); }
-    $$(".scene-opt").forEach(function (b) { b.addEventListener("click", function () { setScene(b.dataset.scene); }); });
-    $("#m-remove").addEventListener("click", function (e) { e.preventDefault(); delete p.image; $("#m-img").src = imgFor(p); $("#m-tag").textContent = "Illustration"; e.target.hidden = true; });
-    $("#m-file").addEventListener("change", function (e) {
-      var file = e.target.files[0];
+    /* live preview of what the caption becomes */
+    function parsed() { return TLP_CAPTION.parse(cap.value, S.data.regions, S.data.types); }
+    function drawPreview() {
+      var d = parsed(), box = $("#pv");
+      $("#cap-c").textContent = cap.value.length + "/5000";
+      if (!d.title) { box.innerHTML = '<p class="muted pv-empty">Paste the caption to see how the property will look on the website.</p>'; return; }
+      var cov = p.images[0];
+      var row = function (k, val, miss) { return "<div><dt>" + k + "</dt><dd" + (val ? "" : ' class="is-miss"') + ">" + esc(val || miss) + "</dd></div>"; };
+      box.innerHTML =
+        '<div class="pv-card"><div class="pv-media">' + (cov ? "<img " + mediaAttr(cov) + ' alt="">' : '<img src="../assets/img/scenes/' + (TYPE_SCENE[d.type] || "plots") + '.webp" alt="">') +
+        (p.videos.length ? '<span class="pill is-plain">' + p.videos.length + (p.videos.length === 1 ? " video" : " videos") + "</span>" : "") + "</div>" +
+        '<div class="pv-body"><p class="pv-loc">' + icon("map") + esc(d.location || region(d.region).name || "") + "</p><b class=\"pv-title\">" + esc(d.title) + "</b>" +
+        '<p class="pv-price">' + (d.price != null ? price(d.price) + (d.priceNote !== "total" ? " <small>" + esc(d.priceNote) + "</small>" : "") : "Price on request") + "</p></div></div>" +
+        '<dl class="pv-facts">' + row("Region", region(d.region).name, "—") + row("Type", typeLabel(d.type).replace(/s$/, ""), "—") + row("Land size", d.area, "Not in caption") +
+        row("Road", d.road, "Not in caption") + row("Approval", d.approval, "Not in caption") + "</dl>" +
+        '<p class="pv-tip">Something not right? Mention it in the caption — the place (e.g. <i>Location: Aryankavu, Kerala</i>), the price with ₹ (e.g. <i>₹77 Lakhs</i>) or the size in cents or acres.</p>';
+    }
+    cap.addEventListener("input", drawPreview);
+
+    /* photos */
+    function drawPhotos() {
+      var g = $("#ph-grid");
+      g.innerHTML = p.images.map(function (src, i) {
+        return '<div class="media-tile"><img ' + mediaAttr(src) + ' alt="Photo ' + (i + 1) + '">' + (i === 0 ? '<span class="media-badge">Cover</span>' : "") +
+          '<div class="media-tools">' + (i ? '<button type="button" class="icon-only" data-cover="' + i + '" aria-label="Make photo ' + (i + 1) + ' the cover" title="Make cover">' + icon("star") + "</button>" : "") +
+          '<button type="button" class="icon-only" data-rm="' + i + '" aria-label="Remove photo ' + (i + 1) + '" title="Remove">' + icon("trash") + "</button></div></div>";
+      }).join("") + (p.images.length < MAX_PHOTOS ? '<label class="media-add" for="ph-file">' + icon("plus") + "<span>" + (p.images.length ? "Add more photos" : "Upload photos") + "</span></label>" : "");
+      drawPreview();
+    }
+    $("#ph-grid").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-rm],[data-cover]");
+      if (!b) return;
+      if (b.dataset.rm != null) p.images.splice(+b.dataset.rm, 1);
+      else p.images.unshift(p.images.splice(+b.dataset.cover, 1)[0]);
+      drawPhotos();
+    });
+    $("#ph-file").addEventListener("change", function (e) {
+      var files = Array.prototype.slice.call(e.target.files, 0, MAX_PHOTOS - p.images.length), st = $("#ph-status");
+      e.target.value = "";
+      var done = 0;
+      files.reduce(function (chain, file) {
+        return chain.then(function () {
+          st.textContent = "Uploading photo " + (done + 1) + " of " + files.length + "…";
+          return uploadPhoto(file).then(function (path) { p.images.push(path); done++; drawPhotos(); });
+        });
+      }, Promise.resolve()).then(function () {
+        st.textContent = done ? (done === 1 ? "Photo added." : done + " photos added.") + " Save, then publish, to show them on the website." : "";
+      }).catch(function (er) { st.textContent = ""; toast(er.message, true); });
+    });
+
+    /* videos */
+    function drawVideos() {
+      var g = $("#vd-grid");
+      g.innerHTML = p.videos.map(function (src, i) {
+        return '<div class="media-tile is-video"><video ' + mediaAttr(src, true) + ' controls playsinline preload="metadata"></video>' +
+          '<div class="media-tools"><button type="button" class="icon-only" data-rm="' + i + '" aria-label="Remove video ' + (i + 1) + '" title="Remove">' + icon("trash") + "</button></div></div>";
+      }).join("") + (p.videos.length < MAX_VIDEOS ? '<label class="media-add" for="vd-file">' + icon("plus") + "<span>" + (p.videos.length ? "Add another video" : "Upload video") + "</span></label>" : "");
+      drawPreview();
+    }
+    $("#vd-grid").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-rm]");
+      if (b) { p.videos.splice(+b.dataset.rm, 1); drawVideos(); }
+    });
+    $("#vd-file").addEventListener("change", function (e) {
+      var file = e.target.files[0], st = $("#vd-status");
       e.target.value = "";
       if (!file) return;
-      var st = $("#m-status");
-      st.textContent = "Preparing photo…";
-      resize(file).then(function (dataUrl) {
-        st.textContent = "Uploading…";
-        return api("upload", { name: val("id") || slugify(val("title")) || file.name, dataUrl: dataUrl }).then(function (d) {
-          S.previews[d.path] = dataUrl;
-          p.image = d.path;
-          $("#m-img").src = dataUrl; $("#m-tag").textContent = "Photo"; $("#m-remove").hidden = false;
-          st.textContent = "Photo uploaded. It shows on the website after you publish.";
-        });
-      }).catch(function (err) { st.textContent = ""; toast(err.message, true); });
+      st.textContent = "Uploading video…";
+      uploadVideo(file).then(function (path) { p.videos.push(path); drawVideos(); st.textContent = "Video added. Save, then publish, to show it on the website."; })
+        .catch(function (er) { st.textContent = ""; toast(er.message, true); });
     });
 
-    // list editors
-    listEditor($("#hl"), $("#hl-add"), p.highlights, function (h, i) { return '<div class="row-edit"><input aria-label="Highlight ' + (i + 1) + '" maxlength="140" value="' + esc(h) + '"><button class="icon-only" data-del aria-label="Remove">' + icon("trash") + "</button></div>"; },
-      function (row) { return $("input", row).value; }, "");
-    listEditor($("#nb"), $("#nb-add"), p.nearby, function (n, i) {
-      return '<div class="row-edit two"><input aria-label="Nearby place ' + (i + 1) + '" placeholder="Place, e.g. Tenkasi bus stand" maxlength="80" value="' + esc(n.name) + '"><input aria-label="Distance ' + (i + 1) + '" placeholder="Distance, e.g. 5 km" maxlength="30" value="' + esc(n.dist) + '"><button class="icon-only" data-del aria-label="Remove">' + icon("trash") + "</button></div>";
-    }, function (row) { var x = $$("input", row); return { name: x[0].value, dist: x[1].value }; }, { name: "", dist: "" });
+    drawPhotos(); drawVideos();
 
-    // layout
-    var lay = L ? clone(L) : { rows: 4, cols: 8, plotSize: "30 × 40 ft", sold: [], booked: [] };
-    if (lay.sold === "all") { lay.sold = []; for (var k = 0; k < lay.rows * lay.cols; k++) lay.sold.push(k); }
-    function drawGrid() {
-      var rows = Math.max(1, Math.min(20, +val("rows") || 1)), cols = Math.max(1, Math.min(30, +val("cols") || 1)), n = rows * cols;
-      lay.sold = lay.sold.filter(function (x) { return x < n; }); lay.booked = lay.booked.filter(function (x) { return x < n; });
-      var g = $("#lay-grid");
-      g.style.gridTemplateColumns = "repeat(" + cols + ", minmax(34px, 1fr))";
-      var html = "";
-      for (var i = 0; i < n; i++) {
-        var s = lay.sold.indexOf(i) >= 0 ? "sold" : lay.booked.indexOf(i) >= 0 ? "booked" : "available";
-        html += '<button type="button" class="plot-cell is-' + s + '" data-i="' + i + '" aria-label="Plot ' + (i + 1) + ", " + s + '">' + (i + 1) + "</button>";
-      }
-      g.innerHTML = html;
-      $("#lay-legend").innerHTML = "<span><b>" + (n - lay.sold.length - lay.booked.length) + "</b> available</span><span><b>" + lay.booked.length + "</b> booked</span><span><b>" + lay.sold.length + "</b> sold</span>";
-    }
-    $("#lay-grid").addEventListener("click", function (e) {
-      var c = e.target.closest(".plot-cell");
-      if (!c) return;
-      var i = +c.dataset.i;
-      if (lay.sold.indexOf(i) >= 0) lay.sold.splice(lay.sold.indexOf(i), 1);
-      else if (lay.booked.indexOf(i) >= 0) { lay.booked.splice(lay.booked.indexOf(i), 1); lay.sold.push(i); }
-      else lay.booked.push(i);
-      drawGrid();
-      var nb = $('.plot-cell[data-i="' + i + '"]'); if (nb) nb.focus();
-    });
-    ["rows", "cols"].forEach(function (k) { $("#f-" + k).addEventListener("input", drawGrid); });
-    $("#lay-free").addEventListener("click", function (e) { e.preventDefault(); lay.sold = []; lay.booked = []; drawGrid(); });
-    $("#lay-sold").addEventListener("click", function (e) { e.preventDefault(); var n = (+val("rows") || 1) * (+val("cols") || 1); lay.booked = []; lay.sold = []; for (var i = 0; i < n; i++) lay.sold.push(i); drawGrid(); });
-    $("#lay-on").addEventListener("change", function (e) { $("#lay").hidden = !e.target.checked; });
-    drawGrid();
-
-    // save / cancel
+    /* save / cancel */
     function close() { S.edit = null; go("properties"); }
     var cancel = function () {
       confirmBox("Leave without saving?", "Changes to this property will be lost.", "Leave", true).then(function (ok) { if (ok) close(); });
@@ -529,61 +528,62 @@
     $("#e-back").addEventListener("click", cancel);
     $("#e-cancel").addEventListener("click", cancel);
     $("#e-save").addEventListener("click", function () {
-      var err = $("#e-err"), out = clone(p);
-      ["title", "id", "location", "region", "type", "status", "priceNote", "area", "approval", "facing", "road", "summary", "description", "video"].forEach(function (k) { out[k] = val(k).trim(); });
-      out.featured = $("#f-featured").checked;
-      out.price = val("price") === "" ? "" : Number(val("price"));
-      out.highlights = (p.highlights || []).map(function (h) { return String(h).trim(); }).filter(Boolean);
-      out.nearby = (p.nearby || []).filter(function (n) { return n.name.trim(); });
-      if (val("lat") !== "" && val("lng") !== "") out.coords = [Number(val("lat")), Number(val("lng"))]; else delete out.coords;
-      if (!out.video) delete out.video;
-      if ($("#lay-on").checked) out.layout = { rows: +val("rows"), cols: +val("cols"), plotSize: val("plotSize").trim(), sold: lay.sold.slice().sort(function (a, b) { return a - b; }), booked: lay.booked.slice().sort(function (a, b) { return a - b; }) };
-      else delete out.layout;
-      out.art = Object.assign({}, out.art || {}, { kind: TYPE_ART[out.type] || "plan" });
-
-      var problems = [];
-      if (!out.title) problems.push("Title");
-      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(out.id)) problems.push("Web address (lowercase letters, numbers and dashes)");
-      else if (S.data.properties.some(function (x, i) { return x.id === out.id && i !== E.index; })) problems.push("Web address is already used by another property");
-      if (!out.location) problems.push("Location");
-      if (out.price === "" || !(out.price >= 0)) problems.push("Price");
-      if (!out.area) problems.push("Area");
-      if (!out.approval) problems.push("Approval / title");
-      if (!out.summary) problems.push("Short summary");
-      if (out.video && !/^https:\/\//.test(out.video)) problems.push("Video link must start with https://");
-      if (out.layout && (!out.layout.plotSize || !(out.layout.rows >= 1 && out.layout.rows <= 20) || !(out.layout.cols >= 1 && out.layout.cols <= 30))) problems.push("Plot layout: rows 1–20, plots per row 1–30 and a plot size");
-      if (problems.length) {
-        err.hidden = false;
-        err.innerHTML = "<b>Please check:</b> " + problems.map(esc).join(", ") + ".";
-        err.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
+      var d = parsed();
+      if (!d.title) {
+        err.hidden = false; err.innerHTML = "<b>Please add the caption.</b> The website takes the property title and details from it.";
+        cap.focus(); return;
       }
-      if (E.index == null) S.data.properties.unshift(out); else S.data.properties[E.index] = out;
+      var out = clone(p);
+      ["caption", "title", "location", "region", "type", "price", "priceNote", "area", "approval", "road", "summary", "highlights"].forEach(function (k) { out[k] = d[k]; });
+      if (!out.location) out.location = region(out.region).name || "";
+      out.description = "";
+      if (out.images.length) out.image = out.images[0]; else delete out.image;
+      if (!out.videos.length) delete out.videos;
+      if (!out.images.length) delete out.images;
+      if (isNew || !out.image) out.scene = TYPE_SCENE[out.type] || "plots";
+      out.art = Object.assign({ seed: 1 + Math.floor(Math.random() * 40) }, out.art || {}, { kind: TYPE_ART[out.type] || "plan" });
+      if (isNew) {
+        out.id = uniqueId(slugify(out.title) || slugify(out.region + " " + out.type));
+        out.nearby = []; out.status = "available"; out.featured = false;
+      }
+      if (isNew) S.data.properties.unshift(out); else S.data.properties[E.index] = out;
       markDirty("data");
-      toast(E.index == null ? "Property added. Publish to put it on the website." : "Saved. Publish to update the website.");
+      toast(isNew ? "Property added. Publish to put it on the website." : "Saved. Publish to update the website.");
       close();
     });
   }
-  function fld(k, label, value, o) {
-    o = o || {};
-    return '<div class="field' + (o.span ? " span-2" : "") + '"><label for="f-' + k + '">' + esc(label) + (o.req ? ' <span class="req">*</span>' : "") + "</label>" +
-      '<input id="f-' + k + '" type="' + (o.type || "text") + '"' + (o.step ? ' step="' + o.step + '"' : "") + (o.max ? ' maxlength="' + o.max + '"' : "") + ' value="' + esc(value == null ? "" : value) + '">' +
-      (o.hint ? "<small>" + o.hint + "</small>" : "") + "</div>";
+
+  /* uploads: on the server they go to the repository; without one they stay in this browser (media.js) */
+  function dataUrlBlob(u) {
+    var m = /^data:([^;]+);base64,(.*)$/.exec(u), bin = atob(m[2]), a = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], { type: m[1] });
   }
-  function sel(k, label, options, req) {
-    return '<div class="field"><label for="f-' + k + '">' + esc(label) + (req ? ' <span class="req">*</span>' : "") + '</label><select id="f-' + k + '">' + options + "</select></div>";
+  function uploadPhoto(file) {
+    return resize(file).then(function (dataUrl) {
+      if (DEMO.on) {
+        var blob = dataUrlBlob(dataUrl);
+        return TLP_MEDIA.put(blob).then(function (path) { TLP_MEDIA.remember(path, blob); return path; });
+      }
+      return api("upload", { name: slugify(file.name) || "photo", dataUrl: dataUrl }).then(function (r) { S.previews[r.path] = dataUrl; return r.path; });
+    });
   }
-  /* rows of inputs bound to an array */
-  function listEditor(box, addBtn, arr, rowHtml, read, blank) {
-    function draw() {
-      box.innerHTML = arr.map(rowHtml).join("") || '<p class="muted" style="margin:0;font-size:var(--text-sm)">None yet.</p>';
-      $$(".row-edit", box).forEach(function (row, i) {
-        $$("input", row).forEach(function (inp) { inp.addEventListener("input", function () { arr[i] = read(row); }); });
-        $("[data-del]", row).addEventListener("click", function (e) { e.preventDefault(); arr.splice(i, 1); draw(); });
-      });
+  var VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+  function uploadVideo(file) {
+    if (VIDEO_TYPES.indexOf(file.type) < 0) return Promise.reject(new Error("Choose an MP4, MOV or WebM video."));
+    if (DEMO.on) {
+      if (file.size > 300 * 1024 * 1024) return Promise.reject(new Error("That video is larger than 300 MB. Export a shorter or smaller version and try again."));
+      return TLP_MEDIA.put(file).then(function (path) { TLP_MEDIA.remember(path, file); return path; });
     }
-    addBtn.addEventListener("click", function (e) { e.preventDefault(); arr.push(clone(blank)); draw(); var ins = $$("input", box); if (ins.length) ins[ins.length - (typeof blank === "string" ? 1 : 2)].focus(); });
-    draw();
+    if (file.size > 3 * 1024 * 1024) return Promise.reject(new Error("That video is larger than 3 MB, the most the website can take at the moment. Upload a shorter clip."));
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(new Error("Could not read that video.")); };
+      r.readAsDataURL(file);
+    }).then(function (dataUrl) {
+      return api("upload", { name: slugify(file.name) || "video", dataUrl: dataUrl }).then(function (r) { S.previews[r.path] = URL.createObjectURL(file); return r.path; });
+    });
   }
   /* shrink photos in the browser before upload: max 2000 px, WebP (JPEG where WebP is unsupported) */
   function resize(file) {
@@ -805,6 +805,7 @@
       confirmBox("Restore the original content?", "All published changes, uploaded photos and enquiries will be removed.", "Restore", true).then(function (ok) {
         if (!ok) return;
         try { localStorage.removeItem(DEMO.key); localStorage.removeItem(DEMO.enq); } catch (e) {}
+        if (window.TLP_MEDIA) TLP_MEDIA.clear();
         S.enquiries = null;
         loadContent().then(function () { go("settings"); toast("Original content restored"); });
       });

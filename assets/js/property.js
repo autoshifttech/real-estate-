@@ -26,7 +26,10 @@
 
   /* hero */
   // site plans read best as a night blueprint behind white type
-  if (p.art.kind === "plan" && !p.image && !p.scene) {
+  p.art = p.art || { kind: "plan", seed: 1 };
+  p.highlights = p.highlights || []; p.nearby = p.nearby || [];
+  var photos = p.images && p.images.length ? p.images : p.image ? [p.image] : [], videos = p.videos || [];
+  if (p.art.kind === "plan" && !photos.length && !p.scene) {
     hero.classList.add("t-dusk");
     var hdr = qs("#site-header"); if (hdr) hdr.classList.add("is-inverse");
   }
@@ -42,23 +45,34 @@
 
   /* spec bar */
   var specs = [["Price", U.formatPrice(p.price) + (p.priceNote && p.priceNote !== "total" ? " " + p.priceNote : "")], ["Area", p.area], ["Type", type ? type.label.replace(/s$/, "") : ""], ["Approval", p.approval], ["Road", p.road]];
-  specBar.innerHTML = specs.map(function (s) { return "<div><dt>" + esc(s[0]) + "</dt><dd>" + esc(s[1]) + "</dd></div>"; }).join("");
+  specBar.innerHTML = specs.filter(function (s) { return s[1]; }).map(function (s) { return "<div><dt>" + esc(s[0]) + "</dt><dd>" + esc(s[1]) + "</dd></div>"; }).join("");
 
   /* main column */
   var html = "";
-  html += '<section aria-labelledby="h-about"><p class="eyebrow">' + esc(region.name) + ' · <span lang="ta">' + esc(region.ta) + "</span></p>" +
-    '<h2 id="h-about">About this property</h2><p class="lede">' + esc(p.summary) + "</p><p>" + esc(p.description) + "</p></section>";
-  html += '<section aria-labelledby="h-high"><h2 id="h-high">Highlights</h2><ul class="ticks">' +
-    p.highlights.map(function (h) { return "<li>" + I.check + "<span>" + esc(h) + "</span></li>"; }).join("") + "</ul></section>";
+  if (photos.length > 1 || videos.length) {
+    html += '<section aria-labelledby="h-media"><h2 id="h-media">Photos' + (videos.length ? " & videos" : "") + '</h2><div class="gallery">' +
+      videos.map(function (v) { return '<div class="gallery-item is-video"><video ' + TLP.mediaSrc(v, true) + ' controls playsinline preload="metadata"></video></div>'; }).join("") +
+      photos.map(function (src, i) { return '<button type="button" class="gallery-item" data-zoom="' + i + '" aria-label="Open photo ' + (i + 1) + ' of ' + photos.length + '"><img ' + TLP.mediaSrc(src) + ' alt="" loading="lazy" decoding="async"></button>'; }).join("") +
+      "</div></section>";
+  }
+  var eyebrow = '<p class="eyebrow">' + esc(region.name) + ' · <span lang="ta">' + esc(region.ta) + "</span></p>";
+  if (p.caption) {
+    html += '<section aria-labelledby="h-about">' + eyebrow + '<h2 id="h-about">About this property</h2><div class="post-text">' + window.TLP_CAPTION.render(p.caption, { skipTitle: true }) + "</div></section>";
+  } else {
+    html += '<section aria-labelledby="h-about">' + eyebrow + '<h2 id="h-about">About this property</h2><p class="lede">' + esc(p.summary) + "</p>" + (p.description ? "<p>" + esc(p.description) + "</p>" : "") + "</section>";
+    if (p.highlights.length) html += '<section aria-labelledby="h-high"><h2 id="h-high">Highlights</h2><ul class="ticks">' +
+      p.highlights.map(function (h) { return "<li>" + I.check + "<span>" + esc(h) + "</span></li>"; }).join("") + "</ul></section>";
+  }
   if (p.layout) html += '<section aria-labelledby="h-plots"><h2 id="h-plots">Choose your plot</h2><div class="plots" id="plots"></div></section>';
-  html += '<section aria-labelledby="h-near"><h2 id="h-near">Location</h2><ul class="nearby">' +
-    p.nearby.map(function (n) { return "<li><span>" + esc(n.name) + "</span><span>" + esc(n.dist) + "</span></li>"; }).join("") + "</ul>" +
+  html += '<section aria-labelledby="h-near"><h2 id="h-near">Location</h2>' + (p.nearby.length ? '<ul class="nearby">' +
+    p.nearby.map(function (n) { return "<li><span>" + esc(n.name) + "</span><span>" + esc(n.dist) + "</span></li>"; }).join("") + "</ul>" : "") +
     '<div class="map-embed"><iframe title="Map of ' + esc(p.location) + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=' +
     encodeURIComponent(p.coords ? p.coords.join(",") : p.location) + '&z=13&output=embed"></iframe></div></section>';
-  html += '<section aria-labelledby="h-video"><h2 id="h-video">Watch the walkthrough</h2><p>We film every property before it is listed — the approach road, the boundary stones, the water and the view.</p>' +
+  if (!videos.length) html += '<section aria-labelledby="h-video"><h2 id="h-video">Watch the walkthrough</h2><p>We film every property before it is listed — the approach road, the boundary stones, the water and the view.</p>' +
     '<div class="actions-row"><a class="btn btn-primary" href="' + esc(p.video || CFG.instagram) + '" target="_blank" rel="noopener">' + I.play + (p.video ? "Watch the video" : "Walkthroughs on Instagram") + "</a>" +
     '<a class="btn btn-light" href="' + esc(CFG.youtube) + '" target="_blank" rel="noopener">' + I.youtube + "YouTube channel</a></div></section>";
   main.innerHTML = html;
+  if (photos.length > 1) lightbox(photos);
 
   /* enquiry form */
   var sold = p.status === "sold";
@@ -80,6 +94,43 @@
   var sim = qs("#similar");
   if (similar.length) { sim.innerHTML = similar.map(TLP.card).join(""); TLP.observe(sim); }
   else qs("#similar-wrap").hidden = true;
+
+  /* ---------- photo viewer ---------- */
+
+  function lightbox(list) {
+    var box = document.createElement("div"), at = 0, opener = null;
+    box.className = "lightbox"; box.hidden = true;
+    box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Photos of " + p.title);
+    box.innerHTML = '<img alt=""><p class="lightbox-count" aria-live="polite"></p>' +
+      '<button type="button" class="lightbox-btn is-close" aria-label="Close">×</button>' +
+      '<button type="button" class="lightbox-btn is-prev" aria-label="Previous photo">‹</button><button type="button" class="lightbox-btn is-next" aria-label="Next photo">›</button>';
+    document.body.appendChild(box);
+    var img = qs("img", box);
+    function show(i) {
+      at = (i + list.length) % list.length;
+      img.removeAttribute("src");
+      if (/^local:/.test(list[at])) window.TLP_MEDIA.url(list[at]).then(function (u) { if (u) img.src = u; }); else img.src = list[at];
+      qs(".lightbox-count", box).textContent = (at + 1) + " / " + list.length;
+    }
+    function close() { box.hidden = true; document.documentElement.style.overflow = ""; if (opener) opener.focus(); }
+    main.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-zoom]");
+      if (!b) return;
+      opener = b; show(+b.dataset.zoom); box.hidden = false; document.documentElement.style.overflow = "hidden"; qs(".is-close", box).focus();
+    });
+    box.addEventListener("click", function (e) {
+      if (e.target.closest(".is-prev")) show(at - 1);
+      else if (e.target.closest(".is-next")) show(at + 1);
+      else if (e.target.closest(".is-close") || e.target === box) close();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (box.hidden) return;
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowLeft") show(at - 1);
+      else if (e.key === "ArrowRight") show(at + 1);
+      else if (e.key === "Tab") { var f = qsa("button", box), i = f.indexOf(document.activeElement); e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); }
+    });
+  }
 
   /* ---------- plot chooser ---------- */
 

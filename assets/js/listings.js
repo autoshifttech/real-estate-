@@ -38,10 +38,10 @@
     if (state.type && p.type !== state.type) return false;
     if (state.budget) {
       var b = DATA.budgets.filter(function (x) { return x.id === state.budget; })[0];
-      if (b && (p.price < b.min || (b.max != null && p.price >= b.max))) return false;
+      if (b && (p.price == null || p.price < b.min || (b.max != null && p.price >= b.max))) return false;
     }
     if (state.q) {
-      var r = U.region(p.region), hay = [p.title, p.location, p.summary, r && r.name, r && r.ta].join(" ").toLowerCase();
+      var r = U.region(p.region), hay = [p.title, p.location, p.summary, p.caption, r && r.name, r && r.ta].join(" ").toLowerCase();
       var words = state.q.toLowerCase().split(/\s+/).filter(Boolean);
       for (var i = 0; i < words.length; i++) if (hay.indexOf(words[i]) < 0) return false;
     }
@@ -51,8 +51,9 @@
   function render() {
     var list = DATA.properties.filter(matches);
     list.sort(function (a, b) {
-      if (state.sort === "price-asc") return a.price - b.price;
-      if (state.sort === "price-desc") return b.price - a.price;
+      var none = (a.price == null) - (b.price == null);   // "price on request" goes last
+      if (state.sort === "price-asc") return none || a.price - b.price;
+      if (state.sort === "price-desc") return none || b.price - a.price;
       // featured first, sold last
       return (a.status === "sold") - (b.status === "sold") || (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
     });

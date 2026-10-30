@@ -21,6 +21,7 @@
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function trimNum(n) { return String(parseFloat(n.toFixed(2))); }
   function formatPrice(n) {
+    if (n == null || n === "") return "Price on request";
     if (n >= 1e7) return "₹" + trimNum(n / 1e7) + " Cr";
     if (n >= 1e5) return "₹" + trimNum(n / 1e5) + " L";
     return "₹" + Number(n).toLocaleString("en-IN");
@@ -388,8 +389,18 @@
   }
   TLP.photo = photo;
 
+  /* src for an uploaded photo / video; "local:" files are filled in from this browser by media.js */
+  var BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  function mediaSrc(path, isVideo) {
+    if (/^local:/.test(String(path || ""))) return (isVideo ? "" : 'src="' + BLANK + '" ') + 'data-local="' + esc(path) + '"';
+    return 'src="' + esc(path) + '"';
+  }
+  TLP.mediaSrc = mediaSrc;
+  function cover(p) { return (p.images && p.images[0]) || p.image || ""; }
+  TLP.cover = cover;
+
   function art(p, extra) {
-    if (p.image) return '<div class="photo"><img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy" decoding="async"></div>';
+    if (cover(p)) return '<div class="photo"><img ' + mediaSrc(cover(p)) + ' alt="' + esc(p.title) + '" loading="lazy" decoding="async"></div>';
     if (p.scene) return photo(p.scene, extra && extra.decorative ? "" : "Aerial view illustrating " + p.title, extra);
     var o = {}; for (var k in p.art) o[k] = p.art[k];
     o.layout = p.layout; o.label = "Illustration of " + p.title;
@@ -406,19 +417,19 @@
   }
   TLP.statusBadge = statusBadge;
 
-  function priceNote(p) { return p.priceNote && p.priceNote !== "total" ? "<small>" + esc(p.priceNote) + "</small>" : ""; }
+  function priceNote(p) { return p.price != null && p.price !== "" && p.priceNote && p.priceNote !== "total" ? "<small>" + esc(p.priceNote) + "</small>" : ""; }
   TLP.priceNote = priceNote;
 
   var STATUS = { available: "Available", few: "Few plots left", sold: "Sold out" };
   TLP.card = function (p) {
     var t = type(p.type), r = region(p.region), url = "property.html?id=" + encodeURIComponent(p.id);
     var kind = t ? t.label.replace(/s$/, "") : "Property";
-    var unit = p.priceNote === "onwards" ? "onwards" : "total price";
+    var unit = p.price == null || p.price === "" ? "" : !p.priceNote || p.priceNote === "total" ? "total price" : p.priceNote;
     var facts = [
       ["area", p.area],
-      ["doc", p.approval.split(" · ")[0]],
+      ["doc", String(p.approval || "").split(" · ")[0]],
       ["route", p.road]
-    ];
+    ].filter(function (f) { return f[1]; });
     return '<article class="card' + (p.status === "sold" ? " card--sold" : "") + '">' +
       '<div class="card-media">' + art(p, { decorative: true }) +
       '<span class="card-status is-' + esc(p.status) + '">' + esc(STATUS[p.status] || "Available") + "</span>" +
@@ -428,7 +439,7 @@
       '<p class="card-loc">' + I.pin + esc(p.location) + "</p>" +
       '<h3 class="card-title"><a href="' + url + '">' + esc(p.title) + "</a></h3>" +
       '<ul class="card-facts">' + facts.map(function (f) { return "<li>" + I[f[0]] + "<span>" + esc(f[1]) + "</span></li>"; }).join("") + "</ul>" +
-      '<div class="card-foot"><p class="card-price">' + formatPrice(p.price) + "<small>" + unit + "</small></p>" +
+      '<div class="card-foot"><p class="card-price">' + formatPrice(p.price) + (unit ? "<small>" + esc(unit) + "</small>" : "") + "</p>" +
       '<div class="card-actions"><a class="card-wa" href="' + waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener" aria-label="WhatsApp about ' + esc(p.title) + '">' + I.whatsapp + "</a>" +
       '<span class="card-go" aria-hidden="true">View' + I.arrow + "</span></div></div>" +
       "</div></article>";

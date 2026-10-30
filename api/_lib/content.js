@@ -18,6 +18,9 @@ const ART_KINDS = ["plan", "ghats", "farm", "hills", "river", "coast", "plains",
 const STATUSES = ["available", "few", "sold"];
 const SOCIALS = ["instagram", "youtube", "facebook", "x", "linkedin", "telegram", "pinterest", "whatsapp", "threads", "website"];
 
+const PHOTO_PATH = /^assets\/img\/properties\/[a-z0-9-]+\.(webp|jpg|jpeg|png)$/;
+const VIDEO_PATH = /^assets\/video\/properties\/[a-z0-9-]+\.(mp4|mov|webm)$/;
+
 function bad(msg) { return Object.assign(new Error(msg), { status: 400 }); }
 
 function parse(kind, text) {
@@ -149,15 +152,15 @@ function cleanProperty(p, i, regionIds, typeIds) {
     region: str(p.region, 40, f + ": region", true),
     type: str(p.type, 30, f + ": type", true),
     location: str(p.location, 120, f + ": location", true),
-    price: num(p.price, f + ": price", 0, 1e11),
+    price: p.price == null || p.price === "" ? null : num(p.price, f + ": price", 0, 1e11),
     priceNote: ["onwards", "total", "per cent", "per acre", "per sq.ft"].indexOf(p.priceNote) >= 0 ? p.priceNote : "total",
-    area: str(p.area, 80, f + ": area", true),
-    approval: str(p.approval, 80, f + ": approval", true),
+    area: str(p.area, 80, f + ": area"),
+    approval: str(p.approval, 80, f + ": approval"),
     facing: str(p.facing, 60, f + ": facing"),
     road: str(p.road, 80, f + ": road access"),
     status: STATUSES.indexOf(p.status) >= 0 ? p.status : "available",
     featured: !!p.featured,
-    summary: str(p.summary, 220, f + ": short summary", true),
+    summary: str(p.summary, 220, f + ": short summary") || str(p.title, 80, f + ": title"),
     description: str(p.description, 3000, f + ": description"),
     highlights: list(p.highlights, f + ": highlights", 12).map((h) => str(h, 140, f + ": highlight")).filter(Boolean),
     nearby: list(p.nearby, f + ": nearby places", 12).map((n) => ({ name: str(n && n.name, 80, f + ": nearby place"), dist: str(n && n.dist, 30, f + ": distance") })).filter((n) => n.name),
@@ -167,11 +170,19 @@ function cleanProperty(p, i, regionIds, typeIds) {
   if (typeIds.indexOf(out.type) < 0) throw bad(f + ": unknown type");
   const scene = cleanScene(p.scene, f + ": image");
   if (scene) out.scene = scene;
-  const image = str(p.image, 200, f + ": photo");
+  const caption = str(p.caption, 5000, f + ": caption");
+  if (caption) out.caption = caption;
+  const images = list(p.images, f + ": photos", 20).map((x) => str(x, 200, f + ": photo"));
+  images.forEach((x) => { if (!PHOTO_PATH.test(x)) throw bad(f + ": photo path is not valid"); });
+  if (images.length) out.images = images;
+  const image = str(p.image, 200, f + ": photo") || images[0] || "";
   if (image) {
-    if (!/^assets\/img\/properties\/[a-z0-9-]+\.(webp|jpg|jpeg|png)$/.test(image)) throw bad(f + ": photo path is not valid");
+    if (!PHOTO_PATH.test(image)) throw bad(f + ": photo path is not valid");
     out.image = image;
   }
+  const videos = list(p.videos, f + ": videos", 3).map((x) => str(x, 200, f + ": video"));
+  videos.forEach((x) => { if (!VIDEO_PATH.test(x)) throw bad(f + ": video path is not valid"); });
+  if (videos.length) out.videos = videos;
   const video = url(p.video, f + ": video link");
   if (video) out.video = video;
   if (p.coords && (p.coords[0] !== "" && p.coords[0] != null)) out.coords = [num(p.coords[0], f + ": latitude", -90, 90), num(p.coords[1], f + ": longitude", -180, 180)];

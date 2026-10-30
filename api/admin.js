@@ -6,7 +6,7 @@
  *   POST logout
  *   GET  content           settings + site content, with version ids for safe saving
  *   POST publish           { config?, data?, shas } -> one commit, the site republishes
- *   POST upload            { name, dataUrl } -> photo saved to assets/img/properties/
+ *   POST upload            { name, dataUrl } -> photo saved to assets/img/properties/, video to assets/video/properties/
  *   GET  enquiries         inbox (decrypted)
  *   POST enquiry           { id, status? | note? | delete? }
  *
@@ -32,6 +32,11 @@ async function loadContent() {
 }
 
 const IMAGE_TYPES = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" };
+const VIDEO_TYPES = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
+function videoOk(buf, ext) {
+  if (ext === "webm") return buf.slice(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+  return buf.slice(4, 8).toString("latin1") === "ftyp" || buf.slice(4, 8).toString("latin1") === "moov";
+}
 function imageOk(buf, ext) {
   if (ext === "webp") return buf.slice(0, 4).toString("latin1") === "RIFF" && buf.slice(8, 12).toString("latin1") === "WEBP";
   if (ext === "jpg") return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
@@ -87,14 +92,15 @@ const actions = {
   },
 
   async upload(req, res, body) {
-    const m = /^data:(image\/(?:webp|jpeg|png));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.dataUrl || ""));
-    if (!m) return fail(res, 400, "Upload a JPG, PNG or WebP photo");
-    const ext = IMAGE_TYPES[m[1]], buf = Buffer.from(m[2], "base64");
-    if (buf.length > 3 * 1024 * 1024) return fail(res, 413, "Photo is too large (max 3 MB after resizing)");
-    if (!imageOk(buf, ext)) return fail(res, 400, "That file is not a valid image");
-    const base = String(body.name || "photo").toLowerCase().replace(/\.[a-z0-9]+$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "photo";
-    const file = "assets/img/properties/" + base + "-" + crypto.randomBytes(3).toString("hex") + "." + ext;
-    await storage.store().commit([{ path: file, content: buf }], "Admin: add photo " + file.split("/").pop());
+    const v = /^data:(video\/(?:mp4|quicktime|webm));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.dataUrl || ""));
+    const m = v || /^data:(image\/(?:webp|jpeg|png));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.dataUrl || ""));
+    if (!m) return fail(res, 400, "Upload a JPG, PNG or WebP photo, or an MP4, MOV or WebM video");
+    const ext = v ? VIDEO_TYPES[m[1]] : IMAGE_TYPES[m[1]], buf = Buffer.from(m[2], "base64");
+    if (buf.length > 3 * 1024 * 1024) return fail(res, 413, v ? "Video is too large (max 3 MB)" : "Photo is too large (max 3 MB after resizing)");
+    if (!(v ? videoOk(buf, ext) : imageOk(buf, ext))) return fail(res, 400, v ? "That file is not a valid video" : "That file is not a valid image");
+    const base = String(body.name || (v ? "video" : "photo")).toLowerCase().replace(/\.[a-z0-9]+$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || (v ? "video" : "photo");
+    const file = (v ? "assets/video/properties/" : "assets/img/properties/") + base + "-" + crypto.randomBytes(3).toString("hex") + "." + ext;
+    await storage.store().commit([{ path: file, content: buf }], "Admin: add " + (v ? "video " : "photo ") + file.split("/").pop());
     send(res, 200, { ok: true, path: file });
   },
 

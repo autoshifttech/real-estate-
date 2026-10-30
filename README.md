@@ -89,7 +89,7 @@ Sign in at **`https://<your-site>.vercel.app/admin/`** with a username and passw
 | Section | What you can do |
 |---|---|
 | Dashboard | Counts, quick actions, latest enquiries |
-| Properties | Add, edit, duplicate, delete and reorder listings; status (available / few left / sold); featured on the home page; price, area, approval, road, facing; summary, description, highlights, nearby places, map pin, video link; **upload photos** (resized in the browser); pick an illustration; **plot layout** editor (click plots: available → booked → sold) |
+| Properties | Add a property with just **photos, videos and the social-media caption** (English, Tamil or both). `assets/js/caption.js` reads the title, place, region, type, price (₹, lakhs, crores, per cent / per acre), land size, road and approval from the caption and shows a live "On the website" preview; the property page shows the caption itself, with a photo gallery and video player. Edit, duplicate, delete and reorder listings; click the status pill to cycle available / few left / sold; star to feature on the home page |
 | Enquiries | Every form sent on the website, newest first; New / Contacted / Closed; call or WhatsApp in one tap; delete; export CSV |
 | Regions | Name, Tamil name, description, image, map position; add, reorder, delete |
 | Steps & FAQs | The "How it works" steps and the FAQ list |
@@ -99,7 +99,7 @@ Edits are a **draft** until you press **Publish to website**. Publishing saves o
 
 ### Demo mode (before the backend is connected)
 
-Until the settings below are added, `/admin/` runs in **demo mode**: sign in with the demo account you were given, and everything you publish (properties, photos, settings, regions, FAQs) is saved **in that browser only**, and the website shows those changes in that same browser, with a "Demo preview" label and a Reset button. Website enquiries sent from that browser appear in the demo inbox. Other visitors always see the normal site, so demo sign-ins can't change the live website. The demo password is stored only as a SHA-256 hash in `admin/admin.js`. Reset the demo from **Settings → Demo data**.
+Until the settings below are added, `/admin/` runs in **demo mode**: sign in with the demo account you were given, and everything you publish (properties, photos, settings, regions, FAQs) is saved **in that browser only**, and the website shows those changes in that same browser, Photos and videos are kept in that browser's IndexedDB (`assets/js/media.js`). Website enquiries sent from that browser appear in the demo inbox. Other visitors always see the normal site, so demo sign-ins can't change the live website. The demo password is stored only as a SHA-256 hash in `admin/admin.js`. Clear it from **Settings → Restore original content**.
 
 Demo mode switches off by itself as soon as the real backend is configured.
 
@@ -161,7 +161,9 @@ assets/
   js/core.js        header, footer, menu, chat button, cards, forms
   js/home.js        scroll story, regions explorer, process line
   js/listings.js    properties filters
-  js/property.js    property page and plot chooser
+  js/property.js    property page, gallery and plot chooser
+  js/caption.js     reads property details from a social-media caption
+  js/media.js       photos / videos stored in the browser until a database is connected
   js/contact.js     buy / sell tabs, map
   img/              favicon, social preview image
 docs/design-system.md
