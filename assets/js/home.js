@@ -81,7 +81,7 @@
 
     var unitPx = 1, top = 0, active = -1, raf = 0, ready = false;
     function measure() {
-      unitPx = window.innerHeight * 0.95;
+      unitPx = window.innerHeight * (window.innerWidth < 760 ? 0.5 : 0.95);   // phones: half a screen per scene
       root.style.height = (N - 1) * unitPx + window.innerHeight + "px";
       top = root.getBoundingClientRect().top + window.scrollY;
       scenes.forEach(function (s) { s.len = s.core ? s.core.getTotalLength() : 0; });
@@ -267,7 +267,7 @@
     /* Scroll-driven: the block pins under the header and the regions open one by one as you scroll.
        The track is as tall as the pinned block plus one "step" of scrolling per region. */
     var track = qs("#regions-track"), sticky = qs(".regions", track), raf = 0, current = 0;
-    function pinned() { return !!track && !U.reduced(); }
+    function pinned() { return !!track && !U.reduced() && window.innerWidth >= 760; }   // phones: a plain list, no pinning
     function stickyTop() { return parseFloat(getComputedStyle(sticky).top) || 0; }
     function step() { return window.innerHeight * (window.innerWidth < 900 ? 0.5 : 0.42); }
     function layout() {

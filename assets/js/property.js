@@ -88,6 +88,25 @@
   /* plot chooser */
   if (p.layout) plots(p);
 
+  /* phones: price, WhatsApp and Call always at hand; hidden while the enquiry form is on screen */
+  var bar = document.createElement("div");
+  bar.className = "buybar";
+  bar.innerHTML = '<p class="buybar-price">' + U.formatPrice(p.price) + TLP.priceNote(p) + "</p>" +
+    '<a class="buybar-btn is-wa" href="' + U.waLink("Hi! I'm interested in " + p.title + " (" + p.location + ").") + '" target="_blank" rel="noopener">' + I.whatsapp + "<span>WhatsApp</span></a>" +
+    '<a class="buybar-btn" href="' + U.telLink() + '" aria-label="Call">' + I.phone + "<span>Call</span></a>";
+  document.body.appendChild(bar);
+  document.body.classList.add("has-buybar");
+  if (window.IntersectionObserver) {
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id || "foot"] = e.isIntersecting; });
+      bar.classList.toggle("is-away", !!(seen.enquire || seen.foot));
+    });
+    var enq = qs("#enquire"), foot = qs(".site-footer") || qs("footer");
+    if (enq) io.observe(enq);
+    if (foot) io.observe(foot);
+  }
+
   /* similar */
   var similar = DATA.properties.filter(function (x) { return x.id !== p.id && (x.region === p.region || x.type === p.type); })
     .sort(function (a, b) { return (b.region === p.region) - (a.region === p.region) || (a.status === "sold") - (b.status === "sold"); }).slice(0, 6);
@@ -158,7 +177,7 @@
     }
     svg += "</svg>";
     var avail = total - sold.length - booked.length;
-    host.innerHTML = svg +
+    host.innerHTML = '<div class="plots-map" style="--cols:' + cols + '">' + svg + "</div>" +
       '<div class="plots-legend"><span><i></i>Available</span><span><i class="b"></i>Booked</span><span><i class="s"></i>Sold</span><span><i class="sel"></i>Your choice</span></div>' +
       '<p class="plots-pick" id="plots-pick" aria-live="polite">' + (avail ? "<b>" + avail + "</b> of " + total + " plots available · each " + esc(L.plotSize) + ". Choose one to add it to your enquiry." : "All plots in this layout have been sold.") + "</p>";
 
