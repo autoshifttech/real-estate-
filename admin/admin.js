@@ -40,6 +40,7 @@
   }
 
   var ICON = {
+    paste: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>',
     home: '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>',
     list: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/>',
     inbox: '<path d="M4 13l2-8h12l2 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
@@ -229,24 +230,15 @@
   var TITLES = { dashboard: "Dashboard", properties: "Properties", enquiries: "Enquiries", regions: "Regions", content: "Steps & FAQs", settings: "Site settings", editor: "Edit property" };
 
   function renderShell() {
-    app.innerHTML = '<div class="shell"><div class="mbar"><button type="button" class="mbar-menu" aria-label="Open menu" aria-expanded="false" aria-controls="side">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>' +
-      '<span class="mbar-title" id="mtitle"></span><a class="mbar-site" href="../index.html" target="_blank" rel="noopener" aria-label="View website">' + icon("ext") + "</a></div>" +
-      '<div class="side-back" hidden></div><aside class="side" id="side"><a class="brand" href="../index.html" target="_blank" rel="noopener">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
-      '<nav aria-label="Admin">' + NAV.map(function (n) { return '<button type="button" data-view="' + n[0] + '">' + icon(n[2]) + n[1] + (n[0] === "enquiries" ? '<span class="count" id="new-count" hidden></span>' : "") + "</button>"; }).join("") + "</nav>" +
-      '<div class="side-foot"><p class="who">Signed in as <b>' + esc(S.user) + '</b></p><a href="../index.html" target="_blank" rel="noopener">' + icon("ext") + '<span>View website</span></a><button type="button" id="logout">' + icon("out") + "<span>Sign out</span></button></div></aside>" +
-      '<div class="main"><header class="topbar"><h1 id="title"></h1><span class="topbar-gap"></span><div class="publish" id="publish"></div></header><main class="content" id="view"></main></div></div>';
-    var menuBtn = $(".mbar-menu"), back = $(".side-back");
-    function drawer(open) {
-      app.querySelector(".shell").classList.toggle("is-menu", open);
-      menuBtn.setAttribute("aria-expanded", String(open)); menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-      back.hidden = !open;
-      document.documentElement.style.overflow = open ? "hidden" : "";
-      if (open) { var cur = $('.side nav [aria-current="page"]') || $(".side nav button"); cur.focus(); } else menuBtn.focus();
-    }
-    menuBtn.addEventListener("click", function () { drawer(!app.querySelector(".shell").classList.contains("is-menu")); });
-    back.addEventListener("click", function () { drawer(false); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && app.querySelector(".shell.is-menu")) drawer(false); });
-    $$(".side nav [data-view]").forEach(function (b) { b.addEventListener("click", function () { if (app.querySelector(".shell.is-menu")) { app.querySelector(".shell").classList.remove("is-menu"); back.hidden = true; menuBtn.setAttribute("aria-expanded", "false"); document.documentElement.style.overflow = ""; } go(b.dataset.view); }); });
+    app.innerHTML = '<div class="shell"><header class="gbar"><div class="gbar-inner glass">' +
+      '<a class="brand" href="../index.html" target="_blank" rel="noopener" aria-label="Tenkasi admin — open the website">' + MARK + '<span class="brand-word"><strong>Tenkasi</strong><small>Admin</small></span></a>' +
+      '<nav class="gtabs" aria-label="Admin"><span class="gtab-pill" aria-hidden="true"></span>' + NAV.map(function (n) { return '<button type="button" class="gtab" data-view="' + n[0] + '">' + n[1] + (n[0] === "enquiries" ? '<span class="count" id="new-count" hidden></span>' : "") + "</button>"; }).join("") + "</nav>" +
+      '<div class="gbar-end"><a class="gbtn" href="../index.html" target="_blank" rel="noopener" aria-label="View website" title="View website">' + icon("ext") + '</a><button type="button" class="gbtn" id="logout" aria-label="Sign out (' + esc(S.user) + ')" title="Sign out">' + icon("out") + "</button></div>" +
+      "</div></header>" +
+      '<div class="main"><div class="pagehead"><h1 id="title"></h1><div class="publish" id="publish"></div></div><main class="content" id="view"></main></div></div>';
+    $$(".gtabs [data-view]").forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.view); }); });
+    window.addEventListener("resize", movePill);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(movePill);
     $("#logout").addEventListener("click", function () {
       var leave = function () { api("logout", {}).then(function () { S.user = null; renderLogin("You have signed out."); }); };
       if (isDirty()) confirmBox("Sign out?", "You have unpublished changes. They will be lost.", "Sign out", true).then(function (ok) { if (ok) leave(); });
@@ -256,11 +248,22 @@
     refreshEnquiryCount();
   }
 
+  /* the dark pill glides to the current tab */
+  function movePill() {
+    var pill = app.querySelector(".gtab-pill"), cur = app.querySelector('.gtabs [aria-current="page"]');
+    if (!pill || !cur) return;
+    pill.style.width = cur.offsetWidth + "px";
+    pill.style.transform = "translateX(" + cur.offsetLeft + "px)";
+    pill.classList.add("is-on");
+  }
+
   function go(view) {
     S.view = view;
-    $$(".side nav [data-view]").forEach(function (b) { if (b.dataset.view === (view === "editor" ? "properties" : view)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-    $("#title").textContent = TITLES[view] || "";
-    $("#mtitle").textContent = TITLES[view] || "";
+    $$(".gtabs [data-view]").forEach(function (b) { if (b.dataset.view === (view === "editor" ? "properties" : view)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+    movePill();
+    var cur = $('.gtabs [aria-current="page"]'), nav = $(".gtabs");
+    if (cur && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: cur.offsetLeft - (nav.clientWidth - cur.offsetWidth) / 2, behavior: "smooth" });
+    $("#title").textContent = view === "editor" && S.edit && S.edit.index == null ? "Add property" : TITLES[view] || "";
     var v = $("#view");
     ({ dashboard: viewDashboard, properties: viewProperties, enquiries: viewEnquiries, regions: viewRegions, content: viewContent, settings: viewSettings, editor: viewEditor })[view](v);
     renderPublish();
@@ -414,6 +417,9 @@
     return L.join("\n").trim();
   }
 
+  var PASTE_KEY = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘V" : "Ctrl+V";
+  document.addEventListener("paste", function (e) { if (S.view === "editor" && S.onPaste) S.onPaste(e); });
+
   function openEditor(index) {
     var p = index == null ? { status: "available", featured: false } : clone(S.data.properties[index]);
     p.images = (p.images && p.images.slice()) || (p.image ? [p.image] : []);
@@ -434,11 +440,11 @@
       '<div class="editor-head"><button class="back" type="button" id="e-back">' + icon("back") + 'Back to properties</button><div class="actions-row"><button class="btn btn-light" id="e-cancel">Cancel</button><button class="btn btn-primary" id="e-save">' + (isNew ? "Add property" : "Save changes") + "</button></div></div>" +
       '<p class="alert" id="e-err" hidden></p>' +
       '<div class="post-editor"><div class="post-col">' +
-      '<section class="panel drop-zone" id="ph-zone"><h2>Photos</h2><p class="hint">Drag and drop the photos you posted, or click to upload. The first photo is the cover on the website — drag photos to change the order.</p>' +
+      '<section class="panel drop-zone" id="ph-zone"><div class="panel-head"><h2>Photos</h2><button type="button" class="btn btn-light btn-sm" id="ph-paste">' + icon("paste") + 'Paste photo</button></div><p class="hint">Drag and drop the photos you posted, paste them (' + PASTE_KEY + '), or click to upload. The first photo is the cover on the website — drag photos to change the order.</p>' +
       '<div class="media-grid" id="ph-grid"></div><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" multiple hidden><p class="media-status" id="ph-status" aria-live="polite"></p></section>' +
-      '<section class="panel drop-zone" id="vd-zone"><h2>Video <span class="optional">Optional</span></h2><p class="hint">Drag and drop the reel or walkthrough video (MP4, MOV or WebM), or click to upload. You can skip this.</p>' +
+      '<section class="panel drop-zone" id="vd-zone"><h2>Video <span class="optional">Optional</span></h2><p class="hint">Drag and drop the reel or walkthrough video (MP4, MOV or WebM), paste a copied video file (' + PASTE_KEY + '), or click to upload. You can skip this.</p>' +
       '<div class="media-grid is-video" id="vd-grid"></div><input type="file" id="vd-file" accept="video/mp4,video/quicktime,video/webm" multiple hidden><p class="media-status" id="vd-status" aria-live="polite"></p></section>' +
-      '<section class="panel"><div class="field"><label for="f-caption" class="h2-label">Caption <span class="req">*</span><span class="counter" id="cap-c"></span></label>' +
+      '<section class="panel"><div class="field"><div class="cap-row"><label for="f-caption" class="h2-label">Caption <span class="req">*</span></label><span class="counter" id="cap-c"></span><button type="button" class="btn btn-light btn-sm" id="cap-paste">' + icon("paste") + "Paste caption</button></div>" +
       '<small style="margin:0 0 var(--space-5)">Paste the same caption you posted on Instagram or Facebook — English, தமிழ் or both. The title, place, price and land size are taken from it.</small>' +
       '<textarea id="f-caption" rows="16" maxlength="5000" placeholder="🌴 Beautiful land for sale near Tenkasi!&#10;&#10;📍 Location: Courtallam Road, Tenkasi&#10;&#10;✅ 10 cents onwards&#10;✅ Tar road access&#10;&#10;💰 Price: ₹1,80,000 per cent">' + esc(p.caption) + "</textarea></div></section>" +
       '</div><aside class="panel post-preview" aria-labelledby="pv-h"><h2 id="pv-h">On the website</h2><div id="pv"></div></aside></div>';
@@ -540,6 +546,51 @@
       var vids = Array.prototype.filter.call(files, function (f) { return /^video\//.test(f.type); });
       if (!vids.length) return toast("Drop an MP4, MOV or WebM video here.", true);
       addVideos(vids);
+    });
+
+    /* paste: Ctrl+V / ⌘V anywhere in the form, or the Paste buttons */
+    S.onPaste = function (e) {
+      var cd = e.clipboardData;
+      if (!cd) return;
+      var files = Array.prototype.slice.call(cd.files || []);
+      if (!files.length) Array.prototype.forEach.call(cd.items || [], function (it) { if (it.kind === "file") { var f = it.getAsFile(); if (f) files.push(f); } });
+      var imgs = files.filter(function (f) { return /^image\//.test(f.type); }), vids = files.filter(function (f) { return /^video\//.test(f.type); });
+      if (imgs.length || vids.length) {
+        e.preventDefault();
+        if (imgs.length) addPhotos(imgs.map(named));
+        if (vids.length) addVideos(vids);
+        return;
+      }
+      var t = e.target, inField = t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT");
+      var text = cd.getData("text/plain");
+      if (!inField && text && text.trim()) { e.preventDefault(); putCaption(text); }
+    };
+    function named(f) {   // screenshots arrive as "image.png"; give them a useful name
+      return f.name && f.name !== "image.png" ? f : new File([f], "pasted-photo-" + Date.now() + "." + (f.type.split("/")[1] || "png"), { type: f.type });
+    }
+    function putCaption(text) {
+      var put = function () { cap.value = text.slice(0, 5000); cap.dispatchEvent(new Event("input", { bubbles: true })); cap.focus(); toast("Caption pasted"); };
+      if (cap.value.trim() && cap.value.trim() !== text.trim()) confirmBox("Replace the caption?", "The caption already has text. Replace it with what you copied?", "Replace").then(function (ok) { if (ok) put(); });
+      else put();
+    }
+    $("#cap-paste").addEventListener("click", function () {
+      if (!navigator.clipboard || !navigator.clipboard.readText) { cap.focus(); toast("Press " + PASTE_KEY + " to paste the caption.", true); return; }
+      navigator.clipboard.readText().then(function (text) {
+        if (!text || !text.trim()) return toast("Nothing to paste. Copy the caption from Instagram or Facebook first.", true);
+        putCaption(text);
+      }).catch(function () { cap.focus(); toast("Allow clipboard access, or press " + PASTE_KEY + " in the caption box.", true); });
+    });
+    $("#ph-paste").addEventListener("click", function () {
+      if (!navigator.clipboard || !navigator.clipboard.read) { toast("Press " + PASTE_KEY + " to paste a copied photo.", true); return; }
+      navigator.clipboard.read().then(function (items) {
+        var jobs = [];
+        items.forEach(function (it) {
+          var type = it.types.filter(function (t) { return /^image\/(png|jpeg|webp)$/.test(t); })[0];
+          if (type) jobs.push(it.getType(type).then(function (blob) { return named(new File([blob], "image.png", { type: type })); }));
+        });
+        if (!jobs.length) return toast("No photo on the clipboard. Copy a photo first.", true);
+        return Promise.all(jobs).then(addPhotos);
+      }).catch(function () { toast("Allow clipboard access, or press " + PASTE_KEY + " to paste the photo.", true); });
     });
 
     /* videos */
