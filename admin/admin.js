@@ -239,6 +239,7 @@
     $$(".gtabs [data-view]").forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.view); }); });
     window.addEventListener("resize", movePill);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(movePill);
+    liquidGlass($(".gbar-inner"));
     $("#logout").addEventListener("click", function () {
       var leave = function () { api("logout", {}).then(function () { S.user = null; renderLogin("You have signed out."); }); };
       if (isDirty()) confirmBox("Sign out?", "You have unpublished changes. They will be lost.", "Sign out", true).then(function (ok) { if (ok) leave(); });
@@ -248,13 +249,78 @@
     refreshEnquiryCount();
   }
 
-  /* the dark pill glides to the current tab */
+  /* the glass droplet glides to the current tab, stretching a little as it moves */
+  var pillAt = null;
   function movePill() {
     var pill = app.querySelector(".gtab-pill"), cur = app.querySelector('.gtabs [aria-current="page"]');
     if (!pill || !cur) return;
     pill.style.width = cur.offsetWidth + "px";
     pill.style.transform = "translateX(" + cur.offsetLeft + "px)";
+    if (pillAt !== null && pillAt !== cur.offsetLeft && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      pill.classList.remove("is-moving"); void pill.offsetWidth; pill.classList.add("is-moving");
+    }
+    pillAt = cur.offsetLeft;
     pill.classList.add("is-on");
+  }
+
+  /* ---------- liquid glass ----------
+   * Like iOS: the backdrop is refracted near the rim of the glass (an SVG displacement map
+   * built for the element's exact size and corner radius), with a slight colour split at the
+   * edge. Chromium can run SVG filters on the backdrop; other browsers keep the frosted look.
+   */
+  var LG_OK = /Chrome\//.test(navigator.userAgent) && window.CSS && CSS.supports("backdrop-filter", "blur(1px)");
+  function lensMap(w, h, r, band) {
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var g = c.getContext("2d"), img = g.createImageData(w, h), d = img.data;
+    var bx = w / 2 - r, by = h / 2 - r;
+    function sd(x, y) {   // signed distance to the rounded rectangle (negative inside)
+      var qx = Math.abs(x - w / 2) - bx, qy = Math.abs(y - h / 2) - by;
+      return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+    }
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4, px = x + 0.5, py = y + 0.5, dist = -sd(px, py), dx = 0, dy = 0;
+        if (dist < band && dist > -1) {
+          var nx = sd(px + 1, py) - sd(px - 1, py), ny = sd(px, py + 1) - sd(px, py - 1), len = Math.hypot(nx, ny) || 1;
+          var t = 1 - Math.max(dist, 0) / band, m = t * t * (3 - 2 * t);   // smooth, strongest at the rim
+          dx = -nx / len * m; dy = -ny / len * m;   // sample from further inside: the rim bends the view inward
+        }
+        d[i] = 128 + dx * 127; d[i + 1] = 128 + dy * 127; d[i + 2] = 128; d[i + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+  var lgCount = 0;
+  function liquidGlass(el) {
+    if (!el || !LG_OK) return;
+    var id = "lg-" + (++lgCount), NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("aria-hidden", "true"); svg.setAttribute("width", "0"); svg.setAttribute("height", "0");
+    svg.style.position = "absolute";
+    document.body.appendChild(svg);
+    var last = "";
+    function build() {
+      var w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight);
+      if (!w || !h || last === w + "x" + h) return;
+      last = w + "x" + h;
+      var r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, h / 2), band = Math.min(22, h / 2.4), s = 46;
+      var map = lensMap(w, h, r, band);
+      var ch = function (k, scale, matrix) {
+        return '<feDisplacementMap in="SourceGraphic" in2="map" scale="' + scale + '" xChannelSelector="R" yChannelSelector="G" result="d' + k + '"/>' +
+          '<feColorMatrix in="d' + k + '" type="matrix" values="' + matrix + '" result="c' + k + '"/>';
+      };
+      svg.innerHTML = '<filter id="' + id + '" x="0" y="0" width="' + w + '" height="' + h + '" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">' +
+        '<feImage href="' + map + '" x="0" y="0" width="' + w + '" height="' + h + '" preserveAspectRatio="none" result="map"/>' +
+        ch("r", s * 1.1, "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0") +
+        ch("g", s, "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0") +
+        ch("b", s * 0.9, "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0") +
+        '<feBlend in="cr" in2="cg" mode="screen" result="rg"/><feBlend in="rg" in2="cb" mode="screen" result="rgb"/>' +
+        '<feGaussianBlur in="rgb" stdDeviation="0.6"/></filter>';
+      el.style.setProperty("--lg-filter", "url(#" + id + ")");
+      el.classList.add("is-liquid");
+    }
+    build();
+    if (window.ResizeObserver) new ResizeObserver(build).observe(el); else window.addEventListener("resize", build);
   }
 
   function go(view) {
