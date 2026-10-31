@@ -18,7 +18,7 @@ module.exports = async function (req, res) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   if (!supa.configured() || supa.configError()) {
     res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300");
-    return res.end("/* built-in content */\n");
+    return res.end("/* built-in content: " + (supa.configError() || "Supabase is not set up (SUPABASE_URL and SUPABASE_SECRET_KEY are missing in Vercel)") + " */\n");
   }
   try {
     const c = await supa.readContent(4000);
@@ -27,6 +27,6 @@ module.exports = async function (req, res) {
   } catch (e) {
     console.error("site", e);
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=5");
-    res.end("/* live content unavailable, using the built-in copy */\n");
+    res.end("/* live content unavailable, using the built-in copy: " + String(e.message || "error").replace(/\*\//g, "").slice(0, 300) + " */\n");
   }
 };

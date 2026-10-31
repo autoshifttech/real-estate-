@@ -381,7 +381,7 @@
   function viewDashboard(v) {
     var P = S.data.properties;
     var count = function (f) { return P.filter(f).length; };
-    v.innerHTML = '<div class="kpis">' +
+    v.innerHTML = '<div class="conn" id="conn" hidden></div><div class="kpis">' +
       kpi(P.length, "Properties listed") + kpi(count(function (p) { return p.status !== "sold"; }), "Available now") +
       kpi(count(function (p) { return p.featured; }), "Featured on home page") + (SHOW_ENQUIRIES ? kpi('<span id="kpi-new">…</span>', "New enquiries") : kpi(count(function (p) { return p.status === "sold"; }), "Sold out")) + "</div>" +
       '<section class="panel"><h2>Quick actions</h2><p class="hint">Changes are saved as a draft. Press <b>Publish to website</b> at the top when you are ready.</p><div class="quick">' +
@@ -393,6 +393,7 @@
       (SHOW_ENQUIRIES ? '<section class="panel"><div class="panel-head"><h2>Latest enquiries</h2><button class="btn btn-light btn-sm" data-go="enquiries">See all</button></div><div id="dash-enq" class="rows"><p class="muted">Loading…</p></div></section>' : "");
     $$("[data-go]", v).forEach(function (b) { b.addEventListener("click", function () { go(b.dataset.go); }); });
     $("[data-act=add]", v).addEventListener("click", function () { openEditor(null); });
+    connection();
     if ($("#move", v)) {
       $("#move-skip").addEventListener("click", function () { $("#move").remove(); });
       $("#move-go").addEventListener("click", moveBrowserData);
@@ -406,6 +407,22 @@
     }).catch(function (e) { var box = $("#dash-enq"); if (box) box.innerHTML = '<p class="alert">' + esc(e.message) + "</p>"; });
   }
   function kpi(n, label) { return '<div class="kpi"><b>' + n + "</b><span>" + esc(label) + "</span></div>"; }
+
+  /* ---------- is the database really connected? (dashboard) ---------- */
+  function connection() {
+    var box = $("#conn");
+    if (!box) return;
+    var show = function (kind, title, text) {
+      box.hidden = false; box.className = "conn is-" + kind;
+      box.innerHTML = "<b>" + esc(title) + "</b><span>" + text + "</span>";
+    };
+    if (DEMO.on) return show("warn", "Not connected to the database", "Changes are saved in this browser only, so other visitors still see the original website. Add <code>SUPABASE_URL</code>, <code>SUPABASE_SECRET_KEY</code>, <code>ADMIN_USERNAME</code>, <code>ADMIN_PASSWORD</code> and <code>SESSION_SECRET</code> in Vercel (Settings → Environments → Production), then redeploy.");
+    fetch("/api/admin?a=status", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (st) {
+      if (st.storage !== "Supabase") return show("warn", "Saving to " + st.storage, "Supabase is not set up in Vercel, so changes are saved to " + esc(st.storage) + ".");
+      if (st.database === "connected") return show("ok", "Connected to Supabase", "Everything you publish shows on the website for everyone within a few seconds.");
+      show("bad", "Supabase is not answering", esc(st.databaseError || "Unknown problem") + ". The website is showing its built-in copy until this is fixed.");
+    }).catch(function () {});
+  }
 
   /* ---------- moving browser-only data into the database ---------- */
   function browserData() {

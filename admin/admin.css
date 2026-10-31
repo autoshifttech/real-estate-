@@ -363,3 +363,12 @@ body.admin {
 .sample-panel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-7); flex-wrap: wrap; border-color: #f3c4bf; background: #fffaf9; }
 .sample-panel h2 { font-size: var(--text-base); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
 .sample-panel .hint { margin: 0; }
+.conn { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-6) var(--space-8); border-radius: var(--radius-md); border: 1px solid var(--border); font-size: var(--text-sm); background: var(--color-6); }
+.conn b { font-family: var(--font-display); font-size: var(--text-base); display: flex; align-items: center; gap: var(--space-3); }
+.conn b::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
+.conn span { color: var(--color-2); }
+.conn code { font-size: var(--text-xs); background: var(--color-5); padding: 1px 6px; border-radius: 4px; }
+.conn.is-ok b { color: #1a7f3f; }
+.conn.is-warn { background: #fff8ec; border-color: #f2d7a6; } .conn.is-warn b { color: #a15c07; }
+.conn.is-bad { background: #fdecea; border-color: #f3c4bf; } .conn.is-bad b { color: #b42318; }
+

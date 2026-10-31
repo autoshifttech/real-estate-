@@ -57,6 +57,7 @@ async function call(method, url, body, extra, timeoutMs) {
   if (!res.ok) {
     const msg = data && (data.message || data.error_description || data.error || data.hint) || res.status;
     const hint = /relation .* does not exist|schema cache/i.test(String(msg)) ? " — run supabase/setup.sql in the Supabase SQL editor"
+      : /invalid api key|invalid jwt|jwt|unauthorized/i.test(String(msg)) ? " — copy the secret key again from Supabase → Project Settings → API Keys into SUPABASE_SECRET_KEY in Vercel, and check SUPABASE_URL is the same project; then redeploy"
       : /permission denied/i.test(String(msg)) ? " — check that SUPABASE_SECRET_KEY is the secret (sb_secret_…) or service_role key, and run the latest supabase/setup.sql again" : "";
     throw Object.assign(new Error("Supabase: " + msg + hint), { status: res.status === 401 || res.status === 403 ? 502 : res.status >= 500 ? 502 : res.status });
   }

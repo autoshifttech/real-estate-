@@ -49,7 +49,13 @@ function imageOk(buf, ext) {
 const actions = {
   async status(req, res) {
     const problems = [auth.configError(), storage.configError()].filter(Boolean);
-    send(res, 200, { ok: true, configured: !problems.length, problems, user: auth.currentUser(req), storage: supa.configured() ? "Supabase" : process.env.TLP_STORAGE === "fs" ? "local files" : "GitHub" });
+    const user = auth.currentUser(req);
+    const out = { ok: true, configured: !problems.length, problems, user, storage: supa.configured() ? "Supabase" : process.env.TLP_STORAGE === "fs" ? "local files" : "GitHub" };
+    // signed in: also say whether the database actually answers (and why not)
+    if (user && supa.configured() && !supa.configError()) {
+      try { await supa.readContent(6000); out.database = "connected"; } catch (e) { out.database = "error"; out.databaseError = e.message; }
+    }
+    send(res, 200, out);
   },
 
   async login(req, res, body) {
