@@ -17,7 +17,7 @@ module.exports = async function (req, res) {
   res.setHeader("Content-Type", "text/javascript; charset=utf-8");
   res.setHeader("X-Content-Type-Options", "nosniff");
   if (!supa.configured() || supa.configError()) {
-    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300");
+    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=10");   // short, so a fixed setting shows quickly
     return res.end("/* built-in content: " + (supa.configError() || "Supabase is not set up (SUPABASE_URL and SUPABASE_SECRET_KEY are missing in Vercel)") + " */\n");
   }
   try {
